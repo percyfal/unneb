@@ -1,0 +1,9 @@
+==============================
+exomeQC.R
+==============================
+
+Batch script for doing QC of exome data. It uses the bioconductor TEQC
+package and the yaml package for parsing the configuration files.
+
+The example data have been taken from the TEQC package.
+
