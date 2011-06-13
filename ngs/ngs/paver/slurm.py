@@ -60,12 +60,6 @@ class Sbatch(Task):
             output.append("  " + " : ".join([str(k), str(self.sbatch_opts[k])]))
         return "\n".join(output)
 
-    def prefix(self):
-        """Calculate a prefix based on working dir and sample name"""
-        sample = self.sbatch_opts['D'].basename()
-        sampledir = self.sbatch_opts['D'].parent
-        return sampledir / sample / sample
-
     # TODO: fix formatting
     def run_sbatch(self, command, command_line=False, **kw):
         if not self.is_initialised:
