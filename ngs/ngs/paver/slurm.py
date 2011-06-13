@@ -38,7 +38,7 @@ class Sbatch(Task):
     __doc__ = "Sbatch class, subclass of paver Task"
     is_initialised = False
     sample = None
-    sample_dir = None
+    sample_dir = path(".")
     project_name = None
     _sbatch_kw = ['A', 'C', 't', 'p', 'n', 'e', 'o', 'D', 'J']
     _sbatch_vals = [None, 'fat', '50:00:00', 'node', 8, None, None, None, None]
@@ -48,7 +48,7 @@ class Sbatch(Task):
         self.sbatch_command = "sbatch"
         self.sbatch_opts = dict((x,y) for x,y in zip(self._sbatch_kw, self._sbatch_vals))
         self.sbatch_opts['A'] = self.project_name
-        self.sbatch_opts['D'] = self.sample_dir / self.sample
+        self.sbatch_opts['D'] = self.sample_dir / str(self.sample)
         self.sbatch_opts['J'] = self.__name__ + "." + str(self.sample)
         self.sbatch_opts['e'] = self.__name__ + ".stderr"
         self.sbatch_opts['o'] = self.__name__ + ".stdout"
