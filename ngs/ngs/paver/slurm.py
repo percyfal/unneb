@@ -31,6 +31,7 @@ def initialise_project(project_name, sample_dir=path(".")):
         except:
             raise SbatchError("No sample defined")
         Sbatch.sbatch_opts['D'] = path(sample_dir) / sample
+        Sbatch.sample = sample
     Sbatch.is_initialised = True
     
 class Sbatch(Task):
@@ -39,6 +40,7 @@ class Sbatch(Task):
     _sbatch_kw = ['A', 'C', 't', 'p', 'n', 'e', 'o', 'D', 'J']
     _sbatch_vals = [None, 'fat', '50:00:00', 'node', 8, None, None, None, None]
     sbatch_opts = dict((x,y) for x,y in zip(_sbatch_kw, _sbatch_vals))
+    sample = None
 
     def __init__(self, func):
         Task.__init__(self, func)
