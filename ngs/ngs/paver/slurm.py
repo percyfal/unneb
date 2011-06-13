@@ -75,6 +75,16 @@ class Sbatch(Task):
             if self.sbatch_opts[kw] != None:
                 sbatch_file += " ".join(["#SBATCH", "-" + str(kw), str(self.sbatch_opts[kw])]) + "\n"
 
+        # Do we have to wait for another process? Check needs and add job_id dependency
+        if self.needs:
+            for req in self.needs:
+                task = environment.get_task(req)
+                print "Jobid for " + req + " : " + str(task.job_id)
+            # needs_tasks = [(environment.get_task(task), task) for task in self.needs]
+            # sbatch_file += "#SBATCH -P=afterok:" + ":" + self.needs[0]
+            # #join([str(need.job_id) for need in self.needs])
+            # print "Needlist: " + ":" + needs_tasks.job_id
+
         # Add verbosity
         sbatch_file += "\n".join(["# Run info","echo \"Running on: $(hostname)\""])
         
@@ -89,7 +99,10 @@ class Sbatch(Task):
         cmd = " ".join([self.sbatch_command, shfile])
         pstr = sh(cmd, capture = True)
         # Relies on the sbatch output being: "Submitted batch job nr", so job_id is last
-        self.job_id = pstr.split().pop()
+        try:
+            self.job_id = pstr.split().pop()
+        except:
+            pass
 
 
 def sbatch(func):
