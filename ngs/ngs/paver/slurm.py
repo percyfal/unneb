@@ -24,11 +24,13 @@ options(
 def initialise_project(project_name, sample_dir=path(".")):
     """Initialise project name for use with sbatch objects"""
     Sbatch.sbatch_opts['A'] = project_name
-    try:
-        sample = str(sys.argv[[x.startswith("sample=") for x in sys.argv].index(True)].split("=")[1])
-    except:
-        raise SbatchError("No sample defined")
-    Sbatch.sbatch_opts['D'] = path(sample_dir) / sample
+    is_help = True in set([x == "-h" for x in sys.argv])
+    if not is_help:
+        try:
+            sample = str(sys.argv[[x.startswith("sample=") for x in sys.argv].index(True)].split("=")[1])
+        except:
+            raise SbatchError("No sample defined")
+        Sbatch.sbatch_opts['D'] = path(sample_dir) / sample
     Sbatch.is_initialised = True
     
 class Sbatch(Task):
