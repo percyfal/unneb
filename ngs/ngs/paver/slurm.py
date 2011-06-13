@@ -23,35 +23,39 @@ options(
 # Since I am using the paver options it has to start with sample=
 def initialise_project(project_name, sample_dir=path(".")):
     """Initialise project name for use with sbatch objects"""
-    Sbatch.sbatch_opts['A'] = project_name
+    Sbatch.project_name = project_name
     is_help = True in set([x == "-h" for x in sys.argv])
     if not is_help:
         try:
             sample = str(sys.argv[[x.startswith("sample=") for x in sys.argv].index(True)].split("=")[1])
         except:
             raise SbatchError("No sample defined")
-        Sbatch.sbatch_opts['D'] = path(sample_dir) / sample
+        Sbatch.sample_dir = path(sample_dir)
         Sbatch.sample = sample
     Sbatch.is_initialised = True
     
 class Sbatch(Task):
     __doc__ = "Sbatch class, subclass of paver Task"
     is_initialised = False
+    sample = None
+    sample_dir = None
+    project_name = None
     _sbatch_kw = ['A', 'C', 't', 'p', 'n', 'e', 'o', 'D', 'J']
     _sbatch_vals = [None, 'fat', '50:00:00', 'node', 8, None, None, None, None]
-    sbatch_opts = dict((x,y) for x,y in zip(_sbatch_kw, _sbatch_vals))
-    sample = None
 
     def __init__(self, func):
         Task.__init__(self, func)
         self.sbatch_command = "sbatch"
+        self.sbatch_opts = dict((x,y) for x,y in zip(self._sbatch_kw, self._sbatch_vals))
+        self.sbatch_opts['A'] = self.project_name
+        self.sbatch_opts['D'] = self.sample_dir / self.sample
         self.sbatch_opts['J'] = self.__name__ + "." + str(self.sample)
         self.sbatch_opts['e'] = self.__name__ + ".stderr"
         self.sbatch_opts['o'] = self.__name__ + ".stdout"
         self.modules = ['bioinfo-tools']
 
     def __str__(self):
-        output = ["Set options", "-" * 30]
+        output = ["Set options", "-" * 12]
         for k in self._sbatch_kw:
             output.append("  " + " : ".join([str(k), str(self.sbatch_opts[k])]))
         return "\n".join(output)
