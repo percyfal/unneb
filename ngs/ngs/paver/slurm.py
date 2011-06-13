@@ -45,7 +45,7 @@ class Sbatch(Task):
     def __init__(self, func):
         Task.__init__(self, func)
         self.sbatch_command = "sbatch"
-        self.sbatch_opts['J'] = self.__name__ + str(self.sample)
+        self.sbatch_opts['J'] = self.__name__ + "." + str(self.sample)
         self.sbatch_opts['e'] = self.__name__ + ".stderr"
         self.sbatch_opts['o'] = self.__name__ + ".stdout"
         self.modules = ['bioinfo-tools']
