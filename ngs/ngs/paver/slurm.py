@@ -96,7 +96,7 @@ class Sbatch(Task):
             sbatch_file += "\n\n# Load modules\n"
             sbatch_file += "\n".join(["module load " + x for x in self.modules])
             sbatch_file += "\n\n# Passed commands\n" + command + "\n\n"
-            shfile = self.sbatch_opts['D'] / self.sbatch_opts['J'] + ".sh"
+            shfile = self.sbatch_opts['D'] / self.__name__ + ".sh"
             fp = open(shfile, 'w')
             fp.write(sbatch_file)
             fp.close()
