@@ -13,6 +13,12 @@ setup(
         ]
     )
 
+
+@task
+def html():
+    """html task"""
+    print "html"
+
 @task
 @needs(['html', "distutils.command.sdist"])
 def sdist():
