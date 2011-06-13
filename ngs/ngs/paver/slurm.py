@@ -53,6 +53,7 @@ class Sbatch(Task):
         self.sbatch_opts['e'] = self.__name__ + ".stderr"
         self.sbatch_opts['o'] = self.__name__ + ".stdout"
         self.modules = ['bioinfo-tools']
+        self.job_id = None
 
     def __str__(self):
         output = ["Set options", "-" * 12]
@@ -68,40 +69,28 @@ class Sbatch(Task):
         for k in keys:
             self.sbatch_opts[k] = kw[k]
 
-        # Run sbatch from command line
-        # Has to be single core job
-        if command_line:
-            sbatch_command = self.sbatch_command
-            self.sbatch_opts['n'] = 1
-            self.sbatch_opts['p'] = None
-            self.sbatch_opts['C'] = None
-            
-            for kw in self._sbatch_kw:
-                if self.sbatch_opts[kw] != None:
-                    sbatch_command += " ".join([" -" + str(kw), str(self.sbatch_opts[kw]) ] )
-            cmd = " ".join([sbatch_command, command])
-            sh(cmd)
-        # Run sbatch script
-        else:
-            sbatch_file = "#!/bin/bash -l\n"
-            sbatch_file += "#Project: " + self.sbatch_opts['A'] + "\n"
-            for kw in self._sbatch_kw:
-                if self.sbatch_opts[kw] != None:
-                    sbatch_file += " ".join(["#SBATCH", "-" + str(kw), str(self.sbatch_opts[kw])]) + "\n"
+        sbatch_file = "#!/bin/bash -l\n"
+        sbatch_file += "#Project: " + self.sbatch_opts['A'] + "\n"
+        for kw in self._sbatch_kw:
+            if self.sbatch_opts[kw] != None:
+                sbatch_file += " ".join(["#SBATCH", "-" + str(kw), str(self.sbatch_opts[kw])]) + "\n"
 
-            # Add verbosity
-            sbatch_file += "\n".join(["# Run info","echo \"Running on: $(hostname)\""])
+        # Add verbosity
+        sbatch_file += "\n".join(["# Run info","echo \"Running on: $(hostname)\""])
+        
+        # Add modules
+        sbatch_file += "\n\n# Load modules\n"
+        sbatch_file += "\n".join(["module load " + x for x in self.modules])
+        sbatch_file += "\n\n# Passed commands\n" + command + "\n\n"
+        shfile = self.sbatch_opts['D'] / self.__name__ + ".sh"
+        fp = open(shfile, 'w')
+        fp.write(sbatch_file)
+        fp.close()
+        cmd = " ".join([self.sbatch_command, shfile])
+        pstr = sh(cmd, capture = True)
+        # Relies on the sbatch output being: "Submitted batch job nr", so job_id is last
+        self.job_id = pstr.split().pop()
 
-            # Add modules
-            sbatch_file += "\n\n# Load modules\n"
-            sbatch_file += "\n".join(["module load " + x for x in self.modules])
-            sbatch_file += "\n\n# Passed commands\n" + command + "\n\n"
-            shfile = self.sbatch_opts['D'] / self.__name__ + ".sh"
-            fp = open(shfile, 'w')
-            fp.write(sbatch_file)
-            fp.close()
-            cmd = " ".join([self.sbatch_command, shfile])
-            sh(cmd)
 
 def sbatch(func):
     """Creates an sbatch task of function"""
