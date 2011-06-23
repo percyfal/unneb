@@ -11,7 +11,7 @@
 #
 
 ## How to run:
-## R CMD BATCH --vanilla '--args  config="config.yaml"' exomeQC.R logfile
+## R CMD BATCH --vanilla '--args  exomerc="config.yaml"' exomeQC.R logfile
 
 usage <- "Usage: R CMD BATCH --vanilla '--args exomerc=\"config.yaml\"' exomeQC.R logfile"
 
