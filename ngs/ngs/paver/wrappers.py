@@ -6,7 +6,7 @@ NOTE: these are just wrappers that simply generate text strings for common ngs t
 
 from paver.easy import path
 
-VERSION = "0.1.0"
+VERSION = "0.1.1"
 
 
 class Command:
@@ -85,4 +85,11 @@ def sam_to_bam(prefix, opts="-bS"):
     infile = prefix + ".sam"
     outfile = prefix + ".bam"
     cmd = Command(" ".join(['samtools view', opts, infile, ">", outfile]), infile, outfile)
+    return cmd
+
+def bamToBed(prefix, opts=""):
+    """Run bamToBed to convert from bam to bed"""
+    infile = prefix + ".bam"
+    outfile = prefix + ".bed"
+    cmd = Command(" ".join(['bamToBed', '-i', infile, '>', outfile]), infile, outfile)
     return cmd
