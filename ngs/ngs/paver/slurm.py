@@ -145,8 +145,8 @@ class Sbatch(Task):
     sample = sample
     sample_dir = path(".")
     project_name = None
-    _sbatch_kw = ['A', 'C', 't', 'p', 'n', 'e', 'o', 'D', 'J']
-    _sbatch_vals = [None, None, '50:00:00', 'node', 8, None, None, None, None]
+    _sbatch_kw = ['A', 'C', 't', 'p', 'n', 'e', 'o', 'D', 'J', 'mail_user', 'mail_type' ]
+    _sbatch_vals = [None, None, '50:00:00', 'node', 8, None, None, None, None, None, None]
 
     def __init__(self, func):
         Task.__init__(self, func)
@@ -177,7 +177,15 @@ class Sbatch(Task):
         sbatch_file += "#Project: " + self.sbatch_opts['A'] + "\n"
         for kw in self._sbatch_kw:
             if self.sbatch_opts[kw] != None:
-                sbatch_file += " ".join(["#SBATCH", "-" + str(kw), str(self.sbatch_opts[kw])]) + "\n"
+                dash = '-'
+                eq = ' '
+                if len(kw) > 1:
+                    dash = '--'
+                    eq = '='
+                if kw == 'mail_user':
+                    if self.sbatch_opts['mail_type'] == None:
+                        self.sbatch_opts['mail_type'] = "ALL"
+                sbatch_file += " ".join(["#SBATCH", dash + str(kw.replace("_", "-")) + eq + str(self.sbatch_opts[kw])]) + "\n"
         # Add verbosity
         sbatch_file += "\n".join(["# Run info","echo \"Running on: $(hostname)\""])
         
