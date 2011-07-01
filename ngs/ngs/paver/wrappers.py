@@ -93,3 +93,10 @@ def bamToBed(prefix, opts=""):
     outfile = prefix + ".bed"
     cmd = Command(" ".join(['bamToBed', '-i', infile, '>', outfile]), infile, outfile)
     return cmd
+
+def gunzip(prefix, opts="-dv"):
+    """Gunzip file"""
+    infile = prefix
+    outfile = prefix.rstrip(".gz")
+    cmd = Command(" ".join(['gzip', opts, infile]), infile, outfile)
+    return cmd
