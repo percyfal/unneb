@@ -54,3 +54,7 @@ class testSolidProjects(unittest.TestCase):
 
     def testTargetedFrag(self):
         print self.tf.global_ini()
+        print self.tf.saet_ini()
+        print self.tf.small_indel_frag_ini()
+        print self.tf.enrichment_ini()
+        print self.tf.targeted_frag_workflow_ini()

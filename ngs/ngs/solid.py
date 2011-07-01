@@ -437,11 +437,14 @@ class SOLiDProject(object):
                 d[k] = "# " + d[k]
         return d
 
-    def global_ini(self):
-        inifile = os.path.join(self.template_path, 'global.ini')
+    def ini_file(self, filename):
+        inifile = os.path.join(self.template_path, filename)
         with open(inifile) as in_handle:
             tmpl = Template(in_handle.read())
         return tmpl.safe_substitute(self.d)
+
+    def global_ini(self):
+        return self.ini_file('global.ini')
 
 class WT_SingleRead(SOLiDProject):
     def __init__(self, runname, samplename, reference, basedir, csfastafile, qualfile, filterref, exons_gtf, junction_ref, read_length=50):
@@ -456,11 +459,7 @@ class WT_SingleRead(SOLiDProject):
                 })
 
     def wt_single_read_ini(self):
-        inifile = os.path.join(self.template_path, 'wt.single.read.workflow.ini')
-        with open(inifile) as in_handle:
-            tmpl = Template(in_handle.read())
-        return tmpl.safe_substitute(self.d)
-
+        return self.ini_file('wt.single.read.workflow.ini')
 
 class TargetedFrag(SOLiDProject):
     def __init__(self, runname, samplename, reference, basedir, targetfile, annotation_gtf_file=None, cmap = None, read_length=50, annotation_human_hg18=0):
@@ -479,10 +478,13 @@ class TargetedFrag(SOLiDProject):
                         } )
 
     def saet_ini(self):
-        inifile = os.path.join(self.template_path, 'saet.ini')
-        with open(inifile) as in_handle:
-            tmpl = Template(in_handle.read())
-        return tmpl.safe_substitute(self.d)
+        return self.ini_file('saet.ini')
+    def enrichment_ini(self):
+        return self.ini_file('enrichment.ini')
+    def small_indel_frag_ini(self):
+        return self.ini_file('small.indel.frag.ini')
+    def targeted_frag_workflow_ini(self):
+        return self.ini_file('targeted.frag.workflow.ini')
 
 class TargetedPE(SOLiDProject):
     def foo(self):
