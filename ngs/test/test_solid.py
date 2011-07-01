@@ -39,7 +39,7 @@ class testSolidProjects(unittest.TestCase):
         if os.path.exists(testdir):
             shutil.rmtree(testdir)
         #self.sp = SOLiDProject("Test", "Test", "ref", basedir=testdir)
-        self.wtse = WT_SingleRead("Test", "Test", "ref", testdir, "csfasta", None)
+        self.wtse = WT_SingleRead("Test", "Test", "ref", testdir, "csfasta", "filterref", "exons_gtf", "junction_ref", None)
 
     def testTemplates(self):
         #print "First looking at " + str(self.sp)

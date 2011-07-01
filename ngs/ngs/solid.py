@@ -447,13 +447,17 @@ class SOLiDProject(object):
 
 class WT_SingleRead(SOLiDProject):
 
-    def __init__(self, runname, samplename, reference, basedir, csfastafile, qualfile, read_length=50):
+    def __init__(self, runname, samplename, reference, basedir, csfastafile, qualfile, filterref, exons_gtf, junction_ref, read_length=50):
         SOLiDProject.__init__(self, runname, samplename, reference, basedir)
-        _key_map = self._key_map.update({'read_length':'read.length', 'csfastafile':'mapping.tagfiles', 'qualfile':'qual.file'})
+        _key_map = self._key_map.update({'read_length':'read.length', 'csfastafile':'mapping.tagfiles', 'qualfile':'qual.file',
+                                         'filter_reference':'filter.reference.file', 'exons_gtf':'exons.gtf.file', 'junction_reference':'junction.reference.file'})
         self.config.update({
                 'read_length':read_length,
                 'csfastafile':csfastafile,
-                'qualfile':qualfile
+                'qualfile':qualfile, 
+                'filter_reference':filterref,
+                'exons_gtf':exons_gtf,
+                'junction_reference':junction_ref
                 })
         self.d = self._set_d()
 
