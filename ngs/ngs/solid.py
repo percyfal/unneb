@@ -1,8 +1,10 @@
 import os
 import sys
 import glob
+from string import Template
+__version__ = '0.2'
 
-__version__ = '0.1.1'
+TEMPLATEDIR= os.path.join(os.path.dirname(__file__), "solid_templates")
 
 # Templates
 ini_templates = {
@@ -118,7 +120,7 @@ import %s
 ## ********************************************
 ## mapping parameters
 ## ********************************************
-mapping.output.dir=${output.dir}/mapping${primer.set}/s_mapping
+mapping.output.dir=${output.dir}/${primer.set}_mapping
 ## ********************************************
 ## positionErrors parameters
 ## ********************************************
@@ -129,144 +131,111 @@ position.errors.output.dir=${output.dir}/positionErrors/
 # mandatory parameters
 # --------------------
 # Parameter to specify whether to run Mutation Pipeline.
-[Options: 1 - Run, 0 - Don't run].
+# [Options: 1 - Run, 0 - Don't run].
 dibayes.run=1
 # Parameter specifies the full path to location of directory
-where to write diBayes output files.
+# where to write diBayes output files.
 dibayes.output.dir=${output.dir}/diBayes/DB_OUT
 # Parameter specifies the full path to location of directory in
-which to place temporary working files
+# which to place temporary working files
 dibayes.working.dir = ${temp.dir}/dibayes
 # Parameter specifies the full path to the log directory
 dibayes.log.dir = ${log.dir}/dibayes
 # Parameter specifies the name of subdirectory in the output
-folder and the Name of the experimentprefix of the output files
+# folder and the Name of the experimentprefix of the output files
 dibayes.output.prefix = test_SNP
-# Parameter specifies the reference sequence fasta file with
-full path
-reference=${reference.dir}/
-DH10B_WithDup_FinalEdit_validated.fasta
-# Parameters specifies colon-separated list of the input sets in
-the format:
-# file-full-path:mate-pair-flag:f3-position-err-file:[r3-
-position-err-file]
-input.file.info=${base.dir}/outputs/pairing/F3-R3-
-Paired.bam:1:${base.dir}/outputs/position-errors/F3-R3-
-Paired_F3_positionErrors.txt:${base.dir}/outputs/positionerrors/
-F3-R3-Paired_R3_positionErrors.txt
+# Parameter specifies the reference sequence fasta file with full path
+reference=%s
+# Parameters specifies colon-separated list of the input sets in the format:
+# file-full-path:mate-pair-flag:f3-position-err-file:[r3-position-err-file]
+input.file.info=%s
 # Maximal read length (e.g. 50). Note: this program allows
 # combining reads from sources with different read lengths.
-maximal.read.length = 50
-# The parameter the criteria to report SNPs. [Options:
-highest|high|medium|low]
+maximal.read.length = %s
+# The parameter the criteria to report SNPs. [Options:highest|high|medium|low]
 # Default value is 'medium' when not mentioned.
-call.stringency = medium
+call.stringency = high
 # optional parameters
-# Changes on the algorithm fine tuning parameters will override
-the values that are preset by call.stringency setting.
+# Changes on the algorithm fine tuning parameters will overridethe values that are preset by call.stringency setting.
 # -------------------
-# Polymorphism rate: Expected frequency of heterozygotes in the
-population: for example, 0.001 in humans
-#poly.rate = 0.001
-# Parameter specifies to detect 2 Adjacent SNP's. [Options: 0 -
-do not detect, 1 - detect].
+# Polymorphism rate: Expected frequency of heterozygotes in the population: for example, 0.001 in humans
+poly.rate = 0.001
+# Parameter specifies to detect 2 Adjacent SNP's. [Options: 0 - do not detect, 1 - detect].
 #detect.2.adjacent.snps=0
-# Parameter specifies whether to write fasta file or not.
-[Options: 0 - Don't write fasta file, 1 - Write fasta file].
+# Parameter specifies whether to write fasta file or not. [Options: 0 - Don't write fasta file, 1 - Write fasta file].
 # Default value when not specified is 1.
 write.fasta = 1
-# Parameter specifies whether to write consensus_calls.txt.
-[Options: 0 - Don't write, 1 - Write].
+# Parameter specifies whether to write consensus_calls.txt. [Options: 0 - Don't write, 1 - Write].
 # Default value when not specified is 1.
 write.consensus = 1
-# Parameter specifies whether to compress consensus_calls.txt by
-zipping it. [Options: 0 - Don't ZIP, 1 - ZIP].
+# Parameter specifies whether to compress consensus_calls.txt by zipping it. [Options: 0 - Don't ZIP, 1 - ZIP].
 compress.consensus = 0
-# Parameter specifies whether to clean up the temporary files.
-[Options: 0 - Don.t clean, 1- Clean].
+# Parameter specifies whether to clean up the temporary files. [Options: 0 - Don.t clean, 1- Clean].
 # Default value when not specified is 1.
 #cleanup.tmp.files =1
-# Parameter specifies not to call SNPs when the coverage of
-position is too high comparing to the median of the coverage
-distribution of all positions.
-# NOTE: enable this filter for whole genome re-sequencing
-application; disable (default) it for transcriptome or target
-re-sequencing.
-#het.skip.high.coverage=1
+# Parameter specifies not to call SNPs when the coverage of position is too high comparing to the median of the coverage distribution of all positions.
+# NOTE: enable this filter for whole genome re-sequencing application; disable (default) it for transcriptome or target re-sequencing.
+het.skip.high.coverage=0
 # Parameter specifies the minimum mapping/pairing quality value.
 # Default value when not specified is 0
 #reads.min.mapping.qv=8
-# Parameter specifies the required minimum for color quality
-value of non-reference allele to call a heterozygous SNP.
+# Parameter specifies the required minimum for color quality value of non-reference allele to call a heterozygous SNP.
 #het.min.nonref.color.qv=7
-# Parameter specifies the required minimum for color quality
-value of non-reference allele to call a homozygous SNP.
+# Parameter specifies the required minimum for color quality value of non-reference allele to call a homozygous SNP.
 #hom.min.nonref.color.qv=7
-# Parameter species the requirement that the novel allele be on
-both strands :
-# Parameter specifies the requirement that the novel allele is
-present on both strands and
-# statistically similarly represented on both strand for both
-heterozygous and homozygous positionsSNPs.
+# Parameter species the requirement that the novel allele be on both strands :
+# Parameter specifies the requirement that the novel allele is present on both strands and
+# statistically similarly represented on both strand for both heterozygous and homozygous positionsSNPs.
 # [Options: 0 - don't require, 1 - require]
 #snp.both.strands = 0
-# Parameter specifies the minimum required coverage to call a
-heterozygous SNP.
+# Parameter specifies the minimum required coverage to call a heterozygous SNP.
 # [Allowed Values: Integer, 1-n]
 #het.min.coverage = 3
-# Parameter specifies Mthe minimum number of unique start
-position required to call a heterozgyote.
+# Parameter specifies Mthe minimum number of unique start position required to call a heterozgyote.
 # [Allowed values: Integer, 1-n]
 #het.min.start.pos = 3
-# Parameter specifies the proportion of the reads containing
-either of the two candidate alleles.
+# Parameter specifies the proportion of the reads containing either of the two candidate alleles.
 # Filters positions with high raw error rate.
 # [Allowed values: Float, 0-1]
 #het.min.ratio.validreads=0.65
-# The less common allele must be at least this proportion of the
-reads of the two heterozygote alleles.heterozygote.
+# The less common allele must be at least this proportion of the reads of the two heterozygote alleles.heterozygote.
 # [Allowed values: Float, 0-1]
 #het.min.allele.ratio=0.15
-# Parameter specifies the Require at minimumleast 2 number of
-reads of an apparently valid tricolor calls to pass through
-filter to call 2 adjacent basesSNPs. i
+# Parameter specifies the Require at minimumleast 2 number of reads of an apparently valid tricolor calls to pass through filter to call 2 adjacent basesSNPs. i
 # [Allowed Values: Integer]
 #het.min.counts.tricolor=2
-# Parameter specifies the required minimum coverage to call a
-homozygous SNP.
+# Parameter specifies the required minimum coverage to call a homozygous SNP.
 #hom.min.coverage=3
-# Parameter specifies the Mminimum number of unique start
-position required to call a homozgyote.
+# Parameter specifies the Mminimum number of unique start position required to call a homozgyote.
 # [Allowed values: Integer, 1-n]
 #hom.min.start.pos=3
-# Parameter specifies the required minimum coverage of candidate
-allele to consider this genome position for a Hhomozygous call.
+# Parameter specifies the required minimum coverage of candidate allele to consider this genome position for a Hhomozygous call.
 #hom.min.allele.count=3
-# Parameter specifies whether or not to filter the reads with
-indels.[Options: 0 - don't filter, 1 - filter].
+# Parameter specifies whether or not to filter the reads with indels.[Options: 0 - don't filter, 1 - filter].
 # Default value when not specified is 1
 #reads.no.indel=1
-# Parameter specifies whether or not the reads to beare uniquely
-mapped. [Options: 0 - don't require, 1 - require].
+# Parameter specifies whether or not the reads to be are uniquely mapped. [Options: 0 - don't require, 1 - require].
 # Default value when not specified is 0
 #reads.only.unique=0
-# Parameter specifies the threshold of mismatch/alignment length
-ratio.
-# The reads whose mismatch/alignment length ratio is HIGHER than
-this specified threshold will be filtered.
+# Parameter specifies the threshold of mismatch/alignment length ratio.
+# The reads whose mismatch/alignment length ratio is HIGHER than this specified threshold will be filtered.
 # [Allowed values: Float, 0 - 1, 1 - don't filer]
 #reads.max.mismatch.alignlength.ratio=1.0
-# Parameter specifies rtTthe threshold of alignment-length /
-read-length ratio.
-# The reads whose alignment-length/read-length ratio is are LESS
-than this specified threshold will be filtered.
+# Parameter specifies rtTthe threshold of alignment-length / read-length ratio.
+# The reads whose alignment-length/read-length ratio is are LESS than this specified threshold will be filtered.
 # [Allowed values: Float, 0 - 1, 0 - don't filer]
 #reads.min.mismatch.alignlength.ratio=0.0
-# Parameter specifies whether to include the reads that only
-have one tag mapped (their mate tags are either unmapped or
-missing.)
+# Parameter specifies whether to include the reads that only have one tag mapped (their mate tags are either unmapped or missing.)
 # [Options: 0 - don't include, 1 - include]
 #reads.include.no.mate=0
+
+# Annotation pipeline
+annotation.human.hg18=0
+#annotation.gtf.file
+#annotation.dbsnp.file.snpchrpos=
+#annotation.dbsnp.file.snpcontigloc=
+#annotation.dbsnp.file.snpcontiglocusid=
+
 """,
 
     'positionError_ini' : r"""##  global parameters
@@ -302,7 +271,6 @@ def _write_template(fo, template):
         fp.write(template)
         fp.close()
     
-
 class PrimerSet():
     """Holds information about a primer set"""
     def __init__(self, primer, readlength, project):
@@ -329,9 +297,9 @@ class PrimerSet():
 
     def matobam_ini_template(self, write=True):
         """matobam.ini template"""
-        try:
-            qualfile = glob.glob(os.path.join(self.reads, "*.qual"))[1]
-        except:
+        if len(glob.glob(os.path.join(self.reads, "*.qual"))) > 0:
+            qualfile = glob.glob(os.path.join(self.reads, "*.qual"))[0]
+        else:
             sys.stderr.write("\nWARNING: No quality file found\n")
             qualfile = ""
         matchfile = os.path.join(self.outputdir, self.project.sample + "_" + self.primer + ".csfasta.ma")
@@ -346,6 +314,10 @@ class PrimerSet():
         if write:
             _write_template(os.path.join(self.workdir, "saet.ini"), template)
         return template
+    
+    def bam_file(self):
+        """get bam file name for this primer set"""
+        return os.path.join(self.project.outputdir, "bam", self.project.sample + "_" + self.primer + ".csfasta.ma" + ".bam")
 
     def __str__(self):
         s = "\n".join(["\t".join(["Primer:",  self.primer]),
@@ -374,7 +346,6 @@ class SolidProject():
         self.positionerrordir = os.path.join(basedir, "workdir", "positionErrors")
         self.dibayesoutputdir = os.path.join(basedir, "output", "dibayes")
         self.positionerroroutputdir = os.path.join(basedir, "output", "positionErrors")
-        
         self.primersets = {}
 
         _make_dir(self.logdir)
@@ -386,24 +357,37 @@ class SolidProject():
         self.primersets[primer].mapping_ini_template()
         self.primersets[primer].matobam_ini_template()
             
+    def max_read_length(self):
+        rl = 0
+        for k in self.primersets.keys():
+            if self.primersets[k].read_length > rl:
+                rl = self.primersets[k].read_length
+        return rl
+    
+    def bamfiles(self):
+        bf = []
+        for k in self.primersets.keys():
+            bf.append(self.primersets[k].bam_file())
+        return bf
+
     def mapping_plan(self):
         """Make a mapping plan file"""
-        
+        pass
 
     def global_ini_template(self, write=True):
         """global.ini template"""
         _make_dir(self.globaldir)
         template = ini_templates['global_ini'] % (self.runname, self.sample,  self.reference, ",".join(self.primersets.keys()))
         if write:
-            _write_template(os.path.join(self.globaldir, "global.ini"), template)
+            _write_template(os.path.join(self.globaldir, "globals.ini"), template)
         return template
 
-    def dibayes_ini_template(self, write=True):
+    def dibayes_ini_template(self, run_type = 0, write=True):
         """dibayes.ini template"""
         _make_dir(self.dibayesdir)
         _make_dir(self.dibayesoutputdir)
         self.positionerror_ini_template()
-        template = ini_templates['dibayes_ini'] % ("../globals/" + self.global_ini)
+        template = ini_templates['dibayes_ini'] % ("../globals/" + self.global_ini, self.reference, self.outputdir + ":" + str(run_type) + ":" + self.positionerroroutputdir,  self.max_read_length())
         if write:
             _write_template(os.path.join(self.dibayesdir, "dibayes.ini"), template)
         return template
@@ -417,6 +401,83 @@ class SolidProject():
             _write_template(os.path.join(self.positionerrordir, "positionerror.ini"), template)
         return template
         
+
+class SOLiDProject(object):
+    """Template class for SOLiD projects"""
+    _key_map = {'runname':'run.name', 'samplename':'sample.name', 'basedir' : 'base.dir', 'reference':'reference.file'}
+    def __init__(self, runname, samplename, reference, basedir):
+        self.workflow = self.__class__.__name__
+        self.global_ini_file = os.path.join(basedir, "workdir", "globals", "global.ini")
+        self.config = {'runname' :runname,
+                       'samplename' : samplename,
+                       'reference' : reference,
+                       'basedir' : basedir
+                       }
+        self.basedirs = {'work': os.path.join(basedir, "workdir"),
+                         'output' : os.path.join(basedir, "output"),
+                         'reads' : os.path.join(basedir, "reads"),
+                         'log' : os.path.join(basedir, "log"),
+                         'temp' : os.path.join(basedir, "temp"),
+                         'intermediate' : os.path.join(basedir, "intermediate")
+                         }
+        self.workdirs = {'dibayes' : os.path.join(basedir, "workdir", "dibayes"),
+                         'positionErrors' : os.path.join(basedir, "workdir", "positionErrors")
+                         }
+        self.outdirs = {'dibayes' : os.path.join(basedir, "output", "dibayes"),
+                        'positionErrors' : os.path.join(basedir, "output", "positionErrors")
+                        }
+        self.template_path = os.path.join(TEMPLATEDIR, self.workflow)
+        self.d = {}
+
+    def _set_d(self):
+        d = {}
+        for k in self.config.keys():
+            d[k] = " = ".join([self._key_map[k], str(self.config[k])])
+            if self.config[k] == None:
+                d[k] = "# " + d[k]
+        d['global_ini'] = self.global_ini_file
+        return d
+
+    def global_ini(self):
+        print "In function"
+        inifile = os.path.join(self.template_path, 'global.ini')
+        with open(inifile) as in_handle:
+            tmpl = Template(in_handle.read())
+        return tmpl.safe_substitute(self.d)
+
+class WT_SingleRead(SOLiDProject):
+
+    def __init__(self, runname, samplename, reference, basedir, csfastafile, qualfile, read_length=50):
+        SOLiDProject.__init__(self, runname, samplename, reference, basedir)
+        _key_map = self._key_map.update({'read_length':'read.length', 'csfastafile':'mapping.tagfiles', 'qualfile':'qual.file'})
+        self.config.update({
+                'read_length':read_length,
+                'csfastafile':csfastafile,
+                'qualfile':qualfile
+                })
+        self.d = self._set_d()
+
+    def wt_single_read_ini(self):
+        inifile = os.path.join(self.template_path, 'wt.single.read.workflow.ini')
+        with open(inifile) as in_handle:
+            tmpl = Template(in_handle.read())
+        return tmpl.safe_substitute(self.d)
+
+
+class TargetedFrag(SOLiDProject):
+    def foo(self):
+        pass
+
+class TargetedPE(SOLiDProject):
+    def foo(self):
+        pass
+
+class ReseqFrag(SOLiDProject):
+    def foo(self):
+        pass
+
+
+
 class oldSolidProject():
     """Generate templates for SOLiD projects"""
     def __init__(self, runname, sample, reference, root="./", global_ini="globals.ini", paired_end=False):
