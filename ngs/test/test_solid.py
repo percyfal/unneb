@@ -40,9 +40,17 @@ class testSolidProjects(unittest.TestCase):
             shutil.rmtree(testdir)
         #self.sp = SOLiDProject("Test", "Test", "ref", basedir=testdir)
         self.wtse = WT_SingleRead("Test", "Test", "ref", testdir, "csfasta", "filterref", "exons_gtf", "junction_ref", None)
-
-    def testTemplates(self):
-        #print "First looking at " + str(self.sp)
-        print "Now looking at " + str(self.wtse)
-        print  self.wtse.global_ini()
+        tfkw = {'runname':'test',
+                'samplename':'testsample',
+                'reference':'reference',
+                'basedir':testdir,
+                'targetfile':'target',
+                'annotation_gtf_file':'annotation'
+                }
+        self.tf = TargetedFrag(**tfkw)
+    def testWT_SingleRead(self):
+        print self.wtse.global_ini()
         print self.wtse.wt_single_read_ini()
+
+    def testTargetedFrag(self):
+        print self.tf.global_ini()

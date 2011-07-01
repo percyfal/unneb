@@ -404,15 +404,10 @@ class SolidProject():
 
 class SOLiDProject(object):
     """Template class for SOLiD projects"""
-    _key_map = {'runname':'run.name', 'samplename':'sample.name', 'basedir' : 'base.dir', 'reference':'reference.file'}
+    _key_map = {}
     def __init__(self, runname, samplename, reference, basedir):
+        self.config = {} # For keys that can be none
         self.workflow = self.__class__.__name__
-        self.global_ini_file = os.path.join(basedir, "workdir", "globals", "global.ini")
-        self.config = {'runname' :runname,
-                       'samplename' : samplename,
-                       'reference' : reference,
-                       'basedir' : basedir
-                       }
         self.basedirs = {'work': os.path.join(basedir, "workdir"),
                          'output' : os.path.join(basedir, "output"),
                          'reads' : os.path.join(basedir, "reads"),
@@ -427,31 +422,31 @@ class SOLiDProject(object):
                         'positionErrors' : os.path.join(basedir, "output", "positionErrors")
                         }
         self.template_path = os.path.join(TEMPLATEDIR, self.workflow)
-        self.d = {}
-
+        self.d = {'runname' :runname,
+                  'samplename' : samplename,
+                  'reference' : reference,
+                  'basedir' : basedir,
+                  'global_ini' : os.path.join(basedir, "workdir", "globals", "global.ini")
+                  }
+        
     def _set_d(self):
         d = {}
         for k in self.config.keys():
             d[k] = " = ".join([self._key_map[k], str(self.config[k])])
             if self.config[k] == None:
                 d[k] = "# " + d[k]
-        d['global_ini'] = self.global_ini_file
         return d
 
     def global_ini(self):
-        print "In function"
         inifile = os.path.join(self.template_path, 'global.ini')
         with open(inifile) as in_handle:
             tmpl = Template(in_handle.read())
         return tmpl.safe_substitute(self.d)
 
 class WT_SingleRead(SOLiDProject):
-
     def __init__(self, runname, samplename, reference, basedir, csfastafile, qualfile, filterref, exons_gtf, junction_ref, read_length=50):
         SOLiDProject.__init__(self, runname, samplename, reference, basedir)
-        _key_map = self._key_map.update({'read_length':'read.length', 'csfastafile':'mapping.tagfiles', 'qualfile':'qual.file',
-                                         'filter_reference':'filter.reference.file', 'exons_gtf':'exons.gtf.file', 'junction_reference':'junction.reference.file'})
-        self.config.update({
+        self.d.update({
                 'read_length':read_length,
                 'csfastafile':csfastafile,
                 'qualfile':qualfile, 
@@ -459,7 +454,6 @@ class WT_SingleRead(SOLiDProject):
                 'exons_gtf':exons_gtf,
                 'junction_reference':junction_ref
                 })
-        self.d = self._set_d()
 
     def wt_single_read_ini(self):
         inifile = os.path.join(self.template_path, 'wt.single.read.workflow.ini')
@@ -469,8 +463,26 @@ class WT_SingleRead(SOLiDProject):
 
 
 class TargetedFrag(SOLiDProject):
-    def foo(self):
-        pass
+    def __init__(self, runname, samplename, reference, basedir, targetfile, annotation_gtf_file=None, cmap = None, read_length=50, annotation_human_hg18=0):
+        SOLiDProject.__init__(self, runname, samplename, reference, basedir)
+        _key_map = self._key_map.update({'cmap':'cmap', 'annotation_gtf_file':'annotation.gtf.file'})
+        self.config.update({
+                'cmap' : cmap,
+                'annotation_gtf_file':annotation_gtf_file
+                })
+        self.d.update( {'csfastafilebase' :self.d['samplename'] + "_F3.csfasta",
+                        'saet_input_csfastafile' : self.d['samplename'] + "_F3.csfasta",
+                        'saet_input_qualfile' : self.d['samplename'] + "_F3_QV.qual",
+                        'target_file' : targetfile,
+                        'annotation_human_hg18' : annotation_human_hg18,
+                        'matobamqual' : self.d['samplename'] + "_F3_QV.qual"
+                        } )
+
+    def saet_ini(self):
+        inifile = os.path.join(self.template_path, 'saet.ini')
+        with open(inifile) as in_handle:
+            tmpl = Template(in_handle.read())
+        return tmpl.safe_substitute(self.d)
 
 class TargetedPE(SOLiDProject):
     def foo(self):
