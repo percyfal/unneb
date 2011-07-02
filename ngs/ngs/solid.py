@@ -260,16 +260,22 @@ position.errors.output.dir=${output.dir}/positionErrors
     }
 
 # Utility functions, not for export
-def _make_dir(d):
-    if not os.path.exists(d):
-        os.makedirs(d)
+def _make_dirs(d):
+    for k in d.keys():
+        if not os.path.exists(d[k]):
+            os.makedirs(d[k])
 
-def _write_template(fo, template):
+def _write_template(fo, tmpl, write=True):
     """Write the template"""
-    if not os.path.exists(fo):
-        fp = open(fo, "w")
-        fp.write(template)
-        fp.close()
+    print "Writing template " + fo
+    if write:
+        if not os.path.exists(fo):
+            fp = open(fo, "w")
+            fp.write(tmpl)
+            fp.close()
+        return 
+    else:
+        return tmpl
     
 class PrimerSet():
     """Holds information about a primer set"""
@@ -402,32 +408,36 @@ class SolidProject():
         return template
         
 
+
 class SOLiDProject(object):
     """Template class for SOLiD projects"""
     _key_map = {}
     def __init__(self, runname, samplename, reference, basedir):
-        self.config = {} # For keys that can be none
+        self.config = {} # For keys that can be None
         self.workflow = self.__class__.__name__
-        self.basedirs = {'work': os.path.join(basedir, "workdir"),
+        self.basedirs = {'base' : basedir,
+                         'work': os.path.join(basedir, "workdir"),
                          'output' : os.path.join(basedir, "output"),
                          'reads' : os.path.join(basedir, "reads"),
                          'log' : os.path.join(basedir, "log"),
                          'temp' : os.path.join(basedir, "temp"),
                          'intermediate' : os.path.join(basedir, "intermediate")
                          }
-        self.workdirs = {'dibayes' : os.path.join(basedir, "workdir", "dibayes"),
-                         'positionErrors' : os.path.join(basedir, "workdir", "positionErrors")
-                         }
-        self.outdirs = {'dibayes' : os.path.join(basedir, "output", "dibayes"),
-                        'positionErrors' : os.path.join(basedir, "output", "positionErrors")
-                        }
+        # self.workdirs = {'dibayes' : os.path.join(basedir, "workdir", "dibayes"),
+        #                  'positionErrors' : os.path.join(basedir, "workdir", "positionErrors")
+        #                  }
+        # self.outdirs = {'dibayes' : os.path.join(basedir, "output", "dibayes"),
+        #                 'positionErrors' : os.path.join(basedir, "output", "positionErrors")
+        #                 }
         self.template_path = os.path.join(TEMPLATEDIR, self.workflow)
+        self.primersets = {}
         self.d = {'runname' :runname,
                   'samplename' : samplename,
                   'reference' : reference,
                   'basedir' : basedir,
                   'global_ini' : os.path.join(basedir, "workdir", "globals", "global.ini")
                   }
+        _make_dirs(self.basedirs)
         
     def _set_d(self):
         d = {}
@@ -469,276 +479,88 @@ class TargetedFrag(SOLiDProject):
                 'cmap' : cmap,
                 'annotation_gtf_file':annotation_gtf_file
                 })
-        self.d.update( {'csfastafilebase' :self.d['samplename'] + "_F3.csfasta",
-                        'saet_input_csfastafile' : self.d['samplename'] + "_F3.csfasta",
-                        'saet_input_qualfile' : self.d['samplename'] + "_F3_QV.qual",
+        self.d.update( {
                         'target_file' : targetfile,
-                        'annotation_human_hg18' : annotation_human_hg18,
-                        'matobamqual' : self.d['samplename'] + "_F3_QV.qual"
+                        'annotation_human_hg18' : annotation_human_hg18
                         } )
+        self._set_d()
+        self.primersets['F3'] = Primer("F3", read_length, self)
+        
+    def init_project(self, saet=True, small_indel_frag=True, enrichment=True, targeted_workflow=True):
+        analysis_plan = os.path.join(self.basedirs['base'], 'analysis.plan')
+        ap = []
+        if saet:
+            self.primersets['F3'].saet_ini()
+            ap.append(os.path.join(self.primersets['F3'].dirs['work'], 'saet.ini'))
+        if small_indel_frag:
+            self.primersets['F3'].enrichment_ini()
+            ap.append(os.path.join(self.primersets['F3'].dirs['work'], 'small.indel.frag.ini'))
+        if enrichment:
+            self.primersets['F3'].targeted_frag_workflow_ini()
+            ap.append(os.path.join(self.primersets['F3'].dirs['work'], 'enrichment.ini'))
+        if targeted_workflow:
+            self.primersets['F3'].small_indel_frag_ini()
+            ap.append(os.path.join(self.primersets['F3'].dirs['work'], 'targeted.frag.workflow.ini'))
+        with open(analysis_plan, 'w') as apf:
+            apf.write("\n".join(ap))
+                          
 
-    def saet_ini(self):
-        return self.ini_file('saet.ini')
-    def enrichment_ini(self):
-        return self.ini_file('enrichment.ini')
-    def small_indel_frag_ini(self):
-        return self.ini_file('small.indel.frag.ini')
-    def targeted_frag_workflow_ini(self):
-        return self.ini_file('targeted.frag.workflow.ini')
+class Primer(object):
+    """Class for primer set"""
+    def __init__(self, primer, readlength, project):
+        self.project = project
+        self.dirs = {'work': os.path.join(self.project.basedirs['work'],  primer + "_mapping"),
+                     'output':os.path.join(self.project.basedirs['output'], primer + "_mapping"),
+                     'reads':os.path.join(self.project.basedirs['reads'],  primer)
+                     }
+        _make_dirs(self.dirs)
+        self.d = {'primer': primer,
+                  'read_length':readlength,
+                  'csfastafilebase' : self.project.d['samplename'] + "_" + primer + ".csfasta",
+                  'saet_input_csfastafile' : os.path.join(self.dirs['reads'], self.project.d['samplename'] + "_" + primer + ".csfasta"),
+                  'saet_input_qualfile' : os.path.join(self.dirs['reads'], self.project.d['samplename'] + "_" + primer + "_QV.qual"),
+                  'matobamqual' : self.project.d['samplename'] + "_" + primer + "_QV.qual" 
+                  # As of yet I have no idea what this looks like
+                  # 'small_indel_frag_qual' : self.project
+                  }
+
+
+    def saet_ini(self, write=True):
+        tmpl = self.ini_file('saet.ini')
+        return _write_template(os.path.join(self.dirs['work'], 'saet.ini'), tmpl, write)
+
+    def enrichment_ini(self, write=True):
+        tmpl = self.ini_file('enrichment.ini')
+        return _write_template(os.path.join(self.dirs['work'], 'enrichment.ini'), tmpl, write)
+
+    def targeted_frag_workflow_ini(self, write=True):
+        tmpl = self.ini_file('targeted.frag.workflow.ini')
+        return _write_template(os.path.join(self.dirs['work'], 'targeted.frag.workflow.ini'), tmpl, write)
+
+    def small_indel_frag_ini(self, write=True):
+        tmpl = self.ini_file('small.indel.frag.ini')
+        return _write_template(self.dirs['work'], tmpl, write)
+    
+    def ini_file(self, filename):
+        inifile = os.path.join(self.project.template_path, filename)
+        with open(inifile) as in_handle:
+            tmpl = Template(in_handle.read())
+        # Global project dictionary
+        d = self.project.d
+        # Primer specific dictionary
+        d.update(self.d)
+        print "Template dir " +  str(dir(tmpl))
+        return tmpl.safe_substitute(d)
+
+
 
 class TargetedPE(SOLiDProject):
-    def foo(self):
+    def __init__(self):
         pass
 
 class ReseqFrag(SOLiDProject):
-    def foo(self):
+    def __init__(self):
         pass
 
 
 
-class oldSolidProject():
-    """Generate templates for SOLiD projects"""
-    def __init__(self, runname, sample, reference, root="./", global_ini="globals.ini", paired_end=False):
-        self.runname = runname
-        self.sample = sample
-        self.reference = reference
-        self.root = root
-
-        # Calculate the directories
-        workdir = os.path.join(root, "workdir")
-        globalsdir = os.path.join(workdir, "globals")
-        self.reads1_dir = os.path.join(root, "reads1")
-        self.reads2_dir = os.path.join(root, "reads2")
-        self.work_dir = workdir
-        self.mappingF3_dir = os.path.join(workdir, "mapping_F3")
-        self.mappingR3_dir = os.path.join(workdir, "mapping_R3")
-        self.pairing_dir = os.path.join(workdir, "pairing")
-        self.positionErrors_dir = os.path.join(workdir, "positionErrors")
-        self.matobam_dir = os.path.join(workdir, "matobam")
-        self.globals_dir = globalsdir
-
-        self.global_ini = os.path.join(globalsdir, global_ini)
-        self.global_ini_rel = os.path.join("..", "globals", global_ini)
-        print self.global_ini_rel
-        self.paired_end = bool(paired_end)
-
-    def _make_dir(self, outdir):
-        if not os.path.exists(outdir):
-            os.makedirs(outdir)
-            
-    def make_solid_dir_structure(self):
-        """Generate typical solid analysis directory structure"""
-        self._make_dir(self.reads1_dir)
-        self._make_dir(self.work_dir)
-        self._make_dir(self.globals_dir)
-        self._make_dir(self.mappingF3_dir)
-        self._make_dir(self.positionErrors_dir)
-        self._make_dir(self.matobam_dir)
-        if self.paired_end:
-            self._make_dir(self.reads2_dir)
-            self._make_dir(self.mappingR3_dir)
-            self._make_dir(self.pairing_dir)
-
-            
-    def init_solid_project(self):
-        """Initialize solid project"""
-        self.make_solid_dir_structure()
-        global_ini = self.global_ini_template()
-        mapping_ini = self.mapping_ini_template()
-        positionErrors_ini = self.positionErrors_ini_template()
-        pairing_ini = self.pairing_ini_template()
-        matobam_ini = self.matobam_ini_template()
-
-    def _write_template(self, fo, template):
-        """Write the template"""
-        if not os.path.exists(fo):
-            fp = open(fo, "w")
-            fp.write(template)
-            fp.close()
-        
-
-    def matobam_ini_template(self, write=True):
-        self.matobam_ini = os.path.join(self.matobam_dir, "matobam.ini")
-        """matobam.ini template"""
-        template = ""
-        if write:
-            self._write_template(self.matobam_ini, template)
-        return template
-
-    def global_ini_template(self, write=True):
-        """global.ini template"""
-        template = r"""############################
-############################
-##
-##  global parameters
-##
-run.name = %s
-sample.name = %s
-
-base.dir=../../
-output.dir = ${base.dir}/outputs
-temp.dir = ${base.dir}/temp
-intermediate.dir = ${base.dir}/intermediate
-log.dir = ${base.dir}/log
-reads.result.dir.1 = ${base.dir}/reads1
-reads.result.dir.2 = ${base.dir}/reads2
-reference=%s
-scratch.dir=/scratch/solid
-
-# override it locally in the pipeline ini file when needed
-primer.set = F3
-
-pipeline.cleanup.middle.files = 1
-job.cleanup.temp.files = 1
-""" % (self.runname, self.sample, self.reference)
-        if write:
-            self._write_template(self.global_ini, template)
-
-        return template
-
-    def positionErrors_ini_template(self, write=True):
-        """positionErrors.ini template"""
-        self.positionErrors_ini = os.path.join(self.positionErrors_dir, "positionErrors.ini")
-
-        template = ""# r"""""" % (self.global_ini)
-        if write:
-            self._write_template(self.positionErrors_ini, template)
-        return template
-
-    def pairing_ini_template(self, write=True):
-        """pairing.ini template"""
-        self.pairing_ini = os.path.join(self.pairing_dir, "pairing.ini")
-        template = r"""#           To include some common variables.
-import ../globals/global.ini
-#Reference genome file name.
-
-## *************************************************************
-##   pairing
-## ************************************************************
-
-# mandatory parameters
-# --------------------
-# Parameter specifies whether to run or not pairing pipeline. [1: to run, 0:to not run]
-pairing.run = 1
-# Mapping output directories 
-mate.pairs.tagfile.dirs = ${base.dir}/outputs/mappingF3,${base.dir}/outputs/mappingR3
-
-mates.file.dir = ${output.dir}/pairing
-
-# optional parameters
-# -------------------
-
-# Selects a set of parameters for indel search: 1: Deletions to 11, insertions to 3, Small indels. 2: Deletions to 14, insertions to 4, 
-# Small indels. 3: Insertions from 4 to 14 4: Insertions from 15 to 20. 5: Longer deletions from 12 to 500. 
-# Any of the values 1-5 may be entered, separated by comments
-#indel.preset.parameters = 1,3,4,5
-
-# Max Base QV. - The maximum value for a base quality value
-#max.base.qv = 40
-
-# Minimum Insert - Minimum insert size defining a good mate. If this is not set the code will attempt to measure the best value
-#insert.start = 
-
-# Maximum Insert - Maximum insert size defining a good mate. If this is not set the code will attempt to measure the best value
-#insert.end = 
-
-# Rescue Level - "Usually 2 * the mismatch level
-#mate.pairs.rescue.level = 4
-
-# Pairing statistics file name 
-#mates.stats.report.name = pairingStats.stats
-
-# Max Hits for Indel Search
-#indel.max.hits = 10
-
-# Maximum Hits
-#matching.max.hits = 100
-
-# Mapping Mismatch Penalty
-#mapping.mismatch.penalty = -2.0
-
-
-# Rescue Anchor Length
-#pairing.anchor.length
-
-# Minimum Non-mapped Length for Indels
-#indel.min.non-matched.length = 10
-
-# Rescue Level for Indels - Default for 50mers,3 for 35mers, and 2 for 25mers.
-#indel.max.mismatches = 5
-
-# Use template Rescue File For Indels
-#use.template.rescue.file = true
-
-# Max mismatches in indel search for tag 1
-#pairing.indel.max.mismatch.tag1 = 5
-
-# Max mismatches in indel search for tag 2
-#pairing.indel.max.mismatch.tag2 = 5
-
-# Pair Uniqueness Threshold
-#pair.uniqueness.threshold = 10.0
-
-# Maximum estimated insert size
-#max.insert.estimate = 20000
-
-# Minimum estimated insert size
-#min.insert.estimate = 0
-
-# Primer set - Use this only when both directories specified by mate.pairs.tagfile.dirs are the same. Then the files must have these strings 
-# immediately before the .csfasta, if present, or the .ma extension.
-# primer.set = F3,R3
-
-# Mark PCR and optical duplicates
-#pairing.mark.duplicates = true
-
-# Color quality file path 1 - Color quality file path for first tag. Use instead of reads directories.
-#pairing.color.qual.file.path.1 = 
-
-# Color quality file path 2 - If either file path is explicitly set, both must be.
-#pairing.color.qual.file.path.2 = 
-
-# Annotations: How to correct color calls - 
-#Specifies how to correct the color calls.
-# 'missing' - Replaces all inconsistent read-colors with '.'. These will translate to 'x' in the base space representation, attribute 'b'.
-# 'reference' - Replaces all read-colors annotated inconsistent (i.e., 'a' or 'b') with the corresponding reference color.
-# 'singles' - Replaces all 'single' inconsistent colors (i.e., those annotated 'a' or 'b' and not adjacent to another 'b') with the corresponding 
-#       reference color. Replaces all other inconsistent colors with '.'.
-# 'consistent' - For each block of contiguous inconsistent colors, replace all single insistent colors 
-#       (i.e., those annotated 'a' or 'b' and not adjacent to another 'b') with the corresponding reference color. Replace all other inconsistent 
-# colors with '.'.
-# 'qvThreshold' - A scheme combining the four above choices, based on the specified qvThreshold. (--correctTo: default is missing)
-#pairing.to.bam.correct.color.calls = reference
-
-# Single-tint annotation - Represents any number of single-tint annotations.
-# 'a' - Isolated single-color mismatches (grAy).
-# 'g' - Color position that is consistent with an isolated one-base variant (e.g., SNP).
-# 'y' - Color position that is consistent with an isolated two-base variant.
-#    (default is agy if not specified.)
-#pairing.to.bam.single.tint = agy
-
-# User Library prefix - Prefix for LB attribute of BAM file. Accepts any characters except tab and hyphen
-#pairing.library.name =
-
-
-
-
-
-
-
-
-
-
-
-
-##################################
-##################################
-##
-##  temp files and folders keep
-##  # don't keep temp files and folders for clean run ...   make it =1, if you want them to be deleted.
-#pipeline.cleanup.middle.files = 0
-#job.cleanup.temp.files = 0
-"""
-        if write and self.paired_end:
-            self._write_template(self.pairing_ini, template)
-        return template

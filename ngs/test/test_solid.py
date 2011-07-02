@@ -20,26 +20,12 @@ sys.path.insert(0,os.path.abspath(os.path.join(exe_path, "..")))
 # Add the paver modules
 from ngs.solid import *
 
-class testPrimerSet(unittest.TestCase):
+class testSOLiDProjects(unittest.TestCase):
     def setUp(self):
         testdir = os.path.join(os.getcwd(), "test", "solid")
         if os.path.exists(testdir):
             shutil.rmtree(testdir)
-        self.sp = SolidProject("Test", "Test", "Ref", basedir=testdir)
-        self.ps = PrimerSet("F3", 50, self.sp)
-
-    def testAddPrimerSet(self):
-        self.sp.add_primer_set("F3")
-        self.sp.global_ini_template()
-        self.sp.dibayes_ini_template()
-
-class testSolidProjects(unittest.TestCase):
-    def setUp(self):
-        testdir = os.path.join(os.getcwd(), "test", "solid")
-        if os.path.exists(testdir):
-            shutil.rmtree(testdir)
-        #self.sp = SOLiDProject("Test", "Test", "ref", basedir=testdir)
-        self.wtse = WT_SingleRead("Test", "Test", "ref", testdir, "csfasta", "filterref", "exons_gtf", "junction_ref", None)
+        #self.wtse = WT_SingleRead("Test", "Test", "ref", testdir, "csfasta", "filterref", "exons_gtf", "junction_ref", None)
         tfkw = {'runname':'test',
                 'samplename':'testsample',
                 'reference':'reference',
@@ -48,13 +34,19 @@ class testSolidProjects(unittest.TestCase):
                 'annotation_gtf_file':'annotation'
                 }
         self.tf = TargetedFrag(**tfkw)
-    def testWT_SingleRead(self):
-        print self.wtse.global_ini()
-        print self.wtse.wt_single_read_ini()
 
-    def testTargetedFrag(self):
-        print self.tf.global_ini()
-        print self.tf.saet_ini()
-        print self.tf.small_indel_frag_ini()
-        print self.tf.enrichment_ini()
-        print self.tf.targeted_frag_workflow_ini()
+    # def testWT_SingleRead(self):
+    #     print self.wtse.global_ini()
+    #     print self.wtse.wt_single_read_ini()
+
+    # def testTargetedFrag(self):
+    #     print self.tf.global_ini()
+    #     print self.tf.saet_ini()
+    #     print self.tf.small_indel_frag_ini()
+    #     print self.tf.enrichment_ini()
+    #     print self.tf.targeted_frag_workflow_ini()
+
+    def testTargetedFragPrimer(self):
+        print self.tf.primersets['F3']
+        self.tf.init_project()
+
