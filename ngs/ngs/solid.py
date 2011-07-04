@@ -1,6 +1,7 @@
 import os
 import sys
 import glob
+import shutil
 from string import Template
 __version__ = '0.2'
 
@@ -25,6 +26,20 @@ def _write_template(fo, tmpl, write=True):
     else:
         return tmpl
 
+def _clean_up(d, key):
+    paths = []
+    obj = os.listdir(d[key])
+    for o in obj:
+        if not o.endswith(".ini"):
+            p = os.path.join(d[key], o)
+            if os.path.isdir(p):
+                shutil.rmtree(p)
+            else:
+                os.remove(p)
+            paths.append(p)
+    return "\n".join(paths)
+
+
 class SOLiDProject(object):
     """Template class for SOLiD projects"""
     _key_map = {}
@@ -37,6 +52,7 @@ class SOLiDProject(object):
                          'reads' : os.path.join(basedir, "reads"),
                          'log' : os.path.join(basedir, "log"),
                          'temp' : os.path.join(basedir, "temp"),
+                         'globals' : os.path.join(basedir, "workdir", "globals"),
                          'intermediate' : os.path.join(basedir, "intermediate")
                          }
         # self.workdirs = {'dibayes' : os.path.join(basedir, "workdir", "dibayes"),
@@ -69,8 +85,24 @@ class SOLiDProject(object):
             tmpl = Template(in_handle.read())
         return tmpl.safe_substitute(self.d)
 
-    def global_ini(self):
-        return self.ini_file('global.ini')
+    def primerset_global(self):
+        pass
+
+    def global_ini(self, write=True):
+        self.primerset_global()
+        tmpl = self.ini_file('global.ini')
+        return _write_template(os.path.join(self.basedirs['globals'], 'global.ini'), tmpl, write)
+    
+    def clean(self, verbose=False):
+        pstr1 = _clean_up(self.basedirs, 'log')
+        pstr2 = _clean_up(self.basedirs, 'temp')
+        pstr3 = _clean_up(self.basedirs, 'intermediate') 
+        pstr = pstr1 + pstr2 + pstr3
+        if verbose and pstr != "":
+            print "removing files for sample " + self.d['samplename']
+            print pstr
+        for k, p in self.primersets.items():
+            p.clean(verbose)
 
 class WT_SingleRead(SOLiDProject):
     def __init__(self, runname, samplename, reference, basedir, csfastafile, qualfile, filterref, exons_gtf, junction_ref, read_length=50):
@@ -88,23 +120,29 @@ class WT_SingleRead(SOLiDProject):
         return self.ini_file('wt.single.read.workflow.ini')
 
 class TargetedFrag(SOLiDProject):
-    def __init__(self, runname, samplename, reference, basedir, targetfile, annotation_gtf_file=None, cmap = None, read_length=50, annotation_human_hg18=0):
+    def __init__(self, runname, samplename, reference, basedir, targetfile, cmap, annotation_gtf_file=None, read_length=50, annotation_human_hg18=0):
         SOLiDProject.__init__(self, runname, samplename, reference, basedir)
         _key_map = self._key_map.update({'cmap':'cmap', 'annotation_gtf_file':'annotation.gtf.file'})
         self.config.update({
-                'cmap' : cmap,
                 'annotation_gtf_file':annotation_gtf_file
                 })
         self.d.update( {
-                        'target_file' : targetfile,
-                        'annotation_human_hg18' : annotation_human_hg18
-                        } )
-        self._set_d()
+                'cmap' : cmap,
+                'target_file' : targetfile,
+                'annotation_human_hg18' : annotation_human_hg18
+                } )
+        self.d.update(self._set_d())
         self.primersets['F3'] = Primer("F3", read_length, self)
-        
+
+    def primerset_global(self):
+        self.d.update({'read_length':self.primersets['F3'].d['read_length'],
+                       'csfastafilebase':self.primersets['F3'].d['csfastafilebase']
+                       })
+
     def init_project(self, saet=True, small_indel_frag=True, enrichment=True, targeted_workflow=True):
         analysis_plan = os.path.join(self.basedirs['base'], 'analysis.plan')
         ap = []
+        self.global_ini()
         if saet:
             self.primersets['F3'].saet_ini()
             ap.append(os.path.join(self.primersets['F3'].dirs['work'], 'saet.ini'))
@@ -140,7 +178,6 @@ class Primer(object):
                   # 'small_indel_frag_qual' : self.project
                   }
 
-
     def saet_ini(self, write=True):
         tmpl = self.ini_file('saet.ini')
         return _write_template(os.path.join(self.dirs['work'], 'saet.ini'), tmpl, write)
@@ -155,7 +192,7 @@ class Primer(object):
 
     def small_indel_frag_ini(self, write=True):
         tmpl = self.ini_file('small.indel.frag.ini')
-        return _write_template(self.dirs['work'], tmpl, write)
+        return _write_template(os.path.join(self.dirs['work'], 'small.indel.frag.ini'), tmpl, write)
     
     def ini_file(self, filename):
         inifile = os.path.join(self.project.template_path, filename)
@@ -165,10 +202,16 @@ class Primer(object):
         d = self.project.d
         # Primer specific dictionary
         d.update(self.d)
-        print "Template dir " +  str(dir(tmpl))
         return tmpl.safe_substitute(d)
 
-
+    def clean(self, verbose=False):
+        pstr1 = _clean_up(self.dirs, 'work')
+        pstr2 = _clean_up(self.dirs, 'output')
+        pstr = pstr1 + pstr2
+        if verbose and pstr != "":
+            print "removing files for primer set " + self.d['primer']
+            print pstr
+        
 
 class TargetedPE(SOLiDProject):
     def __init__(self):
