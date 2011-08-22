@@ -32,3 +32,15 @@ def sync_from_dest(options):
           "--include='" + pat + "'", "--exclude='*'",
           rsync.user + "@" + rsync.host + ":" + src, path]
     sh(" ".join(cl))
+
+### Functions for processing lists and dicts
+def process_list(fn, items):
+    """process list in function"""
+    for item in items:
+        fn(item)
+
+def process_dict(fn, items):
+    """process dict in function"""
+    for s in items.keys():
+        fn(items[s])
+
