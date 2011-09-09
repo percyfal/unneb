@@ -63,8 +63,8 @@ reads <- get.reads(exomerc$bedfile, zerobased=FALSE, chrcol=1, startcol=2, endco
 
 ## Do we have paired-end reads? In that case, run reads2pairs
 if (exomerc$pairedend) {
-    readpairs <- reads2pairs(reads)
-    plotwrapper(readpairs$readpairs, list(insert.size.hist=insert.size.hist), main=paste("Insert sizes for", exomerc$label),  breaks=10)
+    readpairs <- reads2pairs(reads, max.distance=500)
+    plotwrapper(readpairs$readpairs, list(insert.size.hist=insert.size.hist), main=paste("Insert sizes for", exomerc$label),  breaks=100, xlim=c(0,600))
 }
 
 ## 1. Chromosome barplot
