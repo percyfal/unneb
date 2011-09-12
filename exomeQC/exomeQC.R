@@ -28,6 +28,7 @@ if (!exists("exomerc"))
 ## Load required packages
 library(TEQC)
 library(yaml)
+library(RJSONIO)
 
 ##################################################
 ## Load config file
@@ -147,3 +148,10 @@ if (exomerc$saverda) {
     rdafile <- file.path(exomerc$outdir, paste("exomeQC-", exomerc$label, ".rda", sep=""))
     save.image(file=rdafile)
 }
+## Save json file of relevant data
+res <- list(enrichment=enrichment, target=list(fraction=ft, width=wt),
+            capture_specificity=list(flank_0=fr, flank_50=fr.50, flank_100=fr.100),
+            coverage=list(avg=Coverage$avgTargetCoverage, sd=Coverage$targetCoverageSD,
+            quantiles=Coverage$targetCoverageQuantiles,k=Coverage.k))
+jsonfile <- file.path(exomerc$outdir, paste("exomeQC-", exomerc$label, ".json", sep=""))
+write(toJSON(res), file=jsonfile)
