@@ -52,20 +52,25 @@ plotwrapper <- function(obj, fun, sample=exomerc$label, extralab=NULL, outdir=ex
     dev.off()
 }
 
-## Load targets
-targets <- get.targets(exomerc$target)
-## Remove random and Un chromosomes - can be plotted manually
-i <- grepl("random", space(targets)) | grepl("Un", space(targets))
-targets <- targets[!i, drop=TRUE]
-## If no chr labels reorder levels - can't see any easier way to do this
-if (sum(grepl("chr", levels(space(targets)))) == 0) {
+## reducetargets - remove unnecessary annotations and reorder space levels if necessary
+reducetargets <- function(targets) {
     ir <- IRanges(start = start(targets), end=end(targets))
     sp <- space(targets)
     splevels <- c(sort(as.integer(levels(sp))), levels(sp)[is.na(as.integer(levels(sp)))])
     sp <- factor(space(targets), levels=splevels)
     rd <- RangedData(ranges = ir, space = dat[, chrcol])
     targets <- reduce(rd)
+    targets
 }
+
+## Load targets
+targets <- get.targets(exomerc$target)
+## Remove random and Un chromosomes - can be plotted manually
+i <- grepl("random", space(targets)) | grepl("Un", space(targets))
+targets <- targets[!i, drop=TRUE]
+## If no chr labels reorder levels - can't see any easier way to do this
+if (sum(grepl("chr", levels(space(targets)))) == 0)
+    targets <- reducetargets(targets)
 
 ## Fraction of genome that consists of target
 ft <- fraction.target(targets, genome = exomerc$genome)
