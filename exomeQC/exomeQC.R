@@ -58,7 +58,7 @@ reducetargets <- function(targets) {
     sp <- space(targets)
     splevels <- c(sort(as.integer(levels(sp))), levels(sp)[is.na(as.integer(levels(sp)))])
     sp <- factor(space(targets), levels=splevels)
-    rd <- RangedData(ranges = ir, space = dat[, chrcol])
+    rd <- RangedData(ranges = ir, space = sp)
     targets <- reduce(rd)
     targets
 }
@@ -78,6 +78,8 @@ wt <- sum(width(targets))
 
 ## Read bed file, without read names
 reads <- get.reads(exomerc$bedfile, zerobased=FALSE, chrcol=1, startcol=2, endcol=3, idcol=4)
+no.mapped <- dim(reads)[1]
+width.mapped <- sum(as.numeric(width(reads)))
 
 ## Do we have paired-end reads? In that case, run reads2pairs
 if (exomerc$pairedend) {
@@ -169,6 +171,7 @@ if (exomerc$saverda) {
 res <- list(enrichment=enrichment, target=list(fraction=ft, width=wt),
             capture_specificity=list(flank_0=fr, flank_50=fr.50, flank_100=fr.100),
             coverage=list(avg=Coverage$avgTargetCoverage, sd=Coverage$targetCoverageSD,
-            quantiles=Coverage$targetCoverageQuantiles,k=Coverage.k))
+            quantiles=Coverage$targetCoverageQuantiles,k=Coverage.k),
+            mapping=list(no=no.mapped, width=width.mapped))
 jsonfile <- file.path(exomerc$outdir, paste("exomeQC-", exomerc$label, ".json", sep=""))
 write(toJSON(res), file=jsonfile)
