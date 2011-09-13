@@ -54,6 +54,18 @@ plotwrapper <- function(obj, fun, sample=exomerc$label, extralab=NULL, outdir=ex
 
 ## Load targets
 targets <- get.targets(exomerc$target)
+## Remove random and Un chromosomes - can be plotted manually
+i <- grepl("random", space(targets)) | grepl("Un", space(targets))
+targets <- targets[!i, drop=TRUE]
+## If no chr labels reorder levels - can't see any easier way to do this
+if (sum(grepl("chr", levels(space(targets)))) == 0) {
+    ir <- IRanges(start = start(targets), end=end(targets))
+    sp <- space(targets)
+    splevels <- c(sort(as.integer(levels(sp))), levels(sp)[is.na(as.integer(levels(sp)))])
+    sp <- factor(space(targets), levels=splevels)
+    rd <- RangedData(ranges = ir, space = dat[, chrcol])
+    targets <- reduce(rd)
+}
 
 ## Fraction of genome that consists of target
 ft <- fraction.target(targets, genome = exomerc$genome)
@@ -114,7 +126,7 @@ if (exomerc$analyses$coverage) {
     ## 4d. Visualize coverage
     print("visualizing coverage")
     threshold <- 8
-    plotwrapper(Coverage$coverageTarget, list(coverage.hist=coverage.hist), covthreshold=threshold, main=paste("Coverage Distribution for", exomerc$label))
+    plotwrapper(Coverage$coverageTarget, list(coverage.hist=coverage.hist), covthreshold=threshold, main=paste("Coverage Distribution for", exomerc$label), xlim=c(0,200))
 
     ## 4e. Coverage uniformity
     print("visulizing uniformity")
@@ -131,9 +143,9 @@ if (exomerc$analyses$coverage) {
 ##    Mostly for paired end reads
 if (exomerc$analyses$duplicates) {
     if (exomerc$pairedend) {
-        plotwrapper(readpairs$readpairs, list(duplicates.barplot=duplicates.barplot), targets=targets, ylab="Fraction of read pairs")
+        plotwrapper(readpairs$readpairs, list(duplicates.barplot=duplicates.barplot), targets=targets, ylab="Fraction of read pairs", xlim=c(0,40), main=paste("Duplicates barplot for ", exomerc$label))
     } else {
-        plotwrapper(reads, list(duplicates.barplot=duplicates.barplot), targets=targets)
+        plotwrapper(reads, list(duplicates.barplot=duplicates.barplot), targets=targets, xlim=c(0,40), ylab="Fraction of reads", main=paste("Duplicates barplot for ", exomerc$label))
     }
 }
 ##################################################
