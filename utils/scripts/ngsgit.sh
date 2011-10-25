@@ -24,7 +24,7 @@ EOF
 
 
 work_dir=`pwd`
-gitbase=/bubo/home/h1/perun/private/git
+gitbase=/bubo/home/h1/perun/private/git/projects
 
 while getopts ":w:" opt; do
     case $opt in
@@ -58,7 +58,7 @@ fi
 repository=$1
 
 if [ -d $work_dir/$repository ]; then
-    echo $work_dir/$repository exists; not making directory anything
+    echo $work_dir/$repository exists; echo not making directory anything
 else 
     echo Creating $work_dir/$repository
     mkdir $work_dir/$repository

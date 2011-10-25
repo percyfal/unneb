@@ -69,8 +69,9 @@ targets <- get.targets(exomerc$target)
 i <- grepl("random", space(targets)) | grepl("Un", space(targets))
 targets <- targets[!i, drop=TRUE]
 ## If no chr labels reorder levels - can't see any easier way to do this
-if (sum(grepl("chr", levels(space(targets)))) == 0)
-    targets <- reducetargets(targets)
+## Not working...
+## if (sum(grepl("chr", levels(space(targets)))) == 0)
+##     targets <- reducetargets(targets)
 
 ## Fraction of genome that consists of target
 ft <- fraction.target(targets, genome = exomerc$genome)
