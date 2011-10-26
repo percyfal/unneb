@@ -11,19 +11,22 @@
 # Description:
 # 
 
-use lib '/bubo/home/h1/perun/local/lib/perl5/';
+use lib '~/local/lib/perl5/';
 use SciLifeLab_SeqClass;
 # use TaxonomyNCBI;
 use strict;
 
-my $usage = "Usage: $0 gilist
+my $usage = "Usage: $0 gilist dbfile
 
-<gilist>    File with GIs, one per row";
+<gilist>    File with GIs, one per row
+<dbfile>    BIN taxonomy database file
+";
 
 if ($#ARGV != 0) {
   die $usage;
 }
 my $gifile = shift @ARGV;
+my $dbbinfile = shift @ARGV;
 open(IN, $gifile) || die "Can't open $gifile: $!\n";
 my @gi = <IN>;
 chomp @gi;
@@ -34,7 +37,8 @@ my ($prefix) = $gifile =~ /^([0-9a-zA-Z]+)\..+/;
 my $dir = "/bubo/proj/a2010001/projects/B_Nicklasson_11_02/nobackup/";
 # $db->setDirDownload($dir);
 # $db->readTaxonomyNCBI();
-my $db = SciLifeLab_SeqClass->readBINfile("/bubo/proj/a2010001/projects/B_Nicklasson_11_02/nobackup/my_Taxonomy_20110914");
+# "/bubo/proj/a2010001/projects/B_Nicklasson_11_02/nobackup/my_Taxonomy_20110914"
+my $db = SciLifeLab_SeqClass->readBINfile($dbbinfile);
 $db->reduceGIlist(@gi);
 my $resfile = $prefix.".taxa.txt";
 #$db->saveBINfile($resfile);
