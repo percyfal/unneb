@@ -7,7 +7,7 @@
 #
 
 from paver.easy import *
-from paverpipe.setup import setup_options
+from ngs.paver.setup import setup_options
 
 setup_options()
 """

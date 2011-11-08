@@ -12,7 +12,7 @@ setup(
     author_email="per.unneberg@scilifelab.se",
     install_requires = [
         "PyYAML >= 3.09",
-        "bcbb >= 0.2",
+        "bcbio-nextgen >= 0.2",
         ],
     test_suite = 'nose.collector',
     scripts = ['scripts/project_paver_init.py']

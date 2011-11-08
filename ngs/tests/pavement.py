@@ -2,10 +2,10 @@ import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), os.path.pardir))
 from paver.easy import *
-from paverpipe import *
+from ngs.paver import *
 #from paverpipe.bwa import *
 #from paverpipe.samtools import *
-from paverpipe.pipelines import exome_pipeline
+from ngs.paver.pipelines.pipelines import exome_pipeline
 import yaml
 
 ## Project options

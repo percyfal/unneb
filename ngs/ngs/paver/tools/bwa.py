@@ -7,7 +7,7 @@
 #
 
 from paver.easy import *
-from paverpipe.setup import *
+from ngs.paver.setup import *
 
 ## Need to run this in every file?!?
 setup_options()

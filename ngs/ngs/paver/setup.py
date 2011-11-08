@@ -7,7 +7,7 @@
 #
 
 from paver.easy import *
-from paverpipe.samtools import *
+from ngs.paver.tools.samtools import *
 
 """
 Put description here

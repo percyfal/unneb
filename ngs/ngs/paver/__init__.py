@@ -8,7 +8,7 @@
 Paver project tasks
 """
 from paver.easy import *
-from paverpipe.bwa import bwa
+from ngs.paver.tools.bwa import bwa
 
 
 def threads():
