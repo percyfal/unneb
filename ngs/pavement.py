@@ -8,7 +8,7 @@ setup(
     description = "", 
     author="Per Unneberg",
     url="https://github.com/percyfal/unneb",
-    packages=['test'],
+    packages=['tests'],
     author_email="per.unneberg@scilifelab.se",
     install_requires = [
         "PyYAML >= 3.09",
