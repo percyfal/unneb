@@ -4,7 +4,7 @@ import paver.doctools
 
 setup(
     name="unneb-ngs",
-    version="0.1",
+    version="0.2",
     description = "", 
     author="Per Unneberg",
     url="https://github.com/percyfal/unneb",
@@ -12,8 +12,10 @@ setup(
     author_email="per.unneberg@scilifelab.se",
     install_requires = [
         "PyYAML >= 3.09",
+        "bcbb >= 0.2",
         ],
     test_suite = 'nose.collector',
+    scripts = ['scripts/project_paver_init.py']
 )
 
 @task
