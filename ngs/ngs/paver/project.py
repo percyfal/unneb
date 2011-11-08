@@ -68,9 +68,8 @@ def mako_to_rst(tmpl, **tmpl_kw):
 
 def _exome_pipeline_cl(item):
     wd = os.path.join(options.dirs.intermediate, item)
-    cl = ['exome_pipeline.py', os.path.join(options.dirs.git,"proj_conf.yaml"), 
-          wd, os.path.join(options.dirs.data, item, "project_run_info.yaml"), 
-          '--project_dir=%s' %(options.dirs.top) ]
+    cl = ['project_exome_pipeline.py', options.project_config, 
+          wd, os.path.join(options.dirs.data, item, "project_run_info.yaml")]
     options.sbatch.update(jobname="%s_exomepipe" % (item), workdir=wd)
     _sbatch(cl, options.mako.sbatch, **options.sbatch)
 

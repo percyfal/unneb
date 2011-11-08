@@ -1,5 +1,5 @@
 from paver.easy import *
-from paver.setuputils import setup
+from paver.setuputils import setup, find_packages
 import paver.doctools 
 
 setup(
@@ -8,7 +8,7 @@ setup(
     description = "", 
     author="Per Unneberg",
     url="https://github.com/percyfal/unneb",
-    packages=['tests'],
+    packages=find_packages(),
     author_email="per.unneberg@scilifelab.se",
     install_requires = [
         "PyYAML >= 3.09",
