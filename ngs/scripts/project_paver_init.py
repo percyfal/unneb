@@ -49,53 +49,6 @@ ${command_str}
 ${footer}
 '''
 
-PROJ_CONF_YAML = Template('''\
-galaxy_config:
-third_party:
-  top_dir: ${top_dir}
-  log_dir: ${log_dir}
-  intermediate_dir: ${intermediate_dir}
-  genome_build: hg19
-program:
-  bowtie: bowtie
-  samtools: samtools
-  bwa: bwa
-  ucsc_bigwig: wigToBigWig
-  picard: /bubo/sw/apps/bioinfo/picard/1.41
-  gatk: /bubo/sw/apps/bioinfo/GATK/1.0.5909
-  snpEff: 
-  fastqc: fastqc
-  pdflatex: pdflatex
-  barcode: barcode_sort_trim.py
-algorithm:
-  aligner: bwa
-  max_errors: 2
-  num_cores: 8
-  platform: illumina
-  recalibrate: true
-  snpcall: true
-  dbsnp: 
-  bc_mismatch: 2
-  bc_read: 1
-  bc_position: 3
-  java_memory: 3g
-  save_diskspace: true
-
-analysis:
-  towig_script: bam_to_wiggle.py
-distributed:
-  rabbitmq_vhost: bionextgen
-# configuration algorithm changes for custom post-processing steps
-custom_algorithms:
-  'SNP calling':
-    aligner: bwa
-    recalibrate: true
-    snpcall: true
-    dbsnp:
-  'Minimal':
-    aligner: ""
-''')
-
 PAVEMENT_FILE = Template('''\
 """
 ${project} pavement file

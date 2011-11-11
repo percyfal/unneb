@@ -124,3 +124,4 @@ def sbatch_exomeQC():
     with cd_workdir(options.dirs.top):
         process_list(_exomeQC_cl, options.illumina.flowcell_ids)
 
+
