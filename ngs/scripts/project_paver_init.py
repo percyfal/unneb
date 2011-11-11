@@ -248,9 +248,6 @@ The top path defines the root of the project. Relative to this path there should
     f = open(path.join(d['git_dir'], 'sbatch_template.mako'), 'w')
     f.write(SBATCH_TEMPLATE)
     f.close()
-    f = open(path.join(d['git_dir'], 'proj_conf.yaml'), 'w')
-    f.write(PROJ_CONF_YAML.render(**d))
-    f.close()
 
     print "Done setting up the paver project. Please run 'sphinx-quickstart' in %s if you haven't done so yet" % (d['sphinx_dir'])
 
