@@ -23,7 +23,7 @@ def bwa_aln():
     infile = options.prefix + ".fq"
     out = options.prefix + bwa["aln"]["ext_out"]
     bwa["cl"].append(" ".join([bwa["program"], "aln", bwa["aln"]["opts"], options.db["reference"], infile, ">", out]))
-
+    
 @task
 def sampe():
     if options.prefix is None:

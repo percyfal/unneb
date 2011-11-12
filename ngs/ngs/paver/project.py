@@ -48,10 +48,10 @@ def cd_workdir(wd):
         os.chdir(orig_dir)
 
 # Utility functions
-def setup(item):
-    run_conf = os.path.join(options.dirs.data, item, "project_run_info.yaml")
-    cl = ["setup_project_files.py", run_conf, os.path.join(options.dirs.data, item), '--project_dir', options.dirs.top]
-    sh(" ".join(cl))
+# def setup(item):
+#     run_conf = os.path.join(options.dirs.data, item, "project_run_info.yaml")
+#     cl = ["setup_project_files.py", run_conf, os.path.join(options.dirs.data, item), '--project_dir', options.dirs.top]
+#     sh(" ".join(cl))
 
 def _sbatch(cl, tmpl, **kw):
     kw.update(command_str = " ".join(cl))
@@ -98,14 +98,15 @@ def _exomeQC_cl(item):
     _sbatch(cl, options.mako.sbatch, **options.sbatch)
 
 # Tasks
-@task
-def setup_illumina_project():
-    """Setup illumina project files"""
-    options.log.info("Running bcbio.paver.project.setup_illumina_project")
-    if len(options.illumina.flowcell_ids) > 0:
-        process_list(setup, options.illumina.flowcell_ids)
-    else:
-        print >> sys.stderr, "No flowcell ids: skipping"
+# TODO: rewrite
+# @task
+# def setup_illumina_project():
+#     """Setup illumina project files"""
+#     options.log.info("Running ngs.paver.project.setup_illumina_project")
+#     if len(options.illumina.flowcell_ids) > 0:
+#         process_list(setup, options.illumina.flowcell_ids)
+#     else:
+#         print >> sys.stderr, "No flowcell ids: skipping"
 
 
 @task
