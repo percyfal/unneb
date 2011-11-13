@@ -7,7 +7,6 @@
 #
 from paver.easy import *
 from paver.tasks import *
-import ngs.paver.pipelines
 from ngs.paver.tools.gatk import *
 from ngs.paver.tools.samtools import *
 

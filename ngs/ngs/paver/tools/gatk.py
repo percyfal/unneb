@@ -7,9 +7,6 @@
 #
 
 from paver.easy import *
-from ngs.paver.setup import setup_options
-
-setup_options()
 """
 GATK 
 """

@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+#!/usr/bin/env python
 """
     project_paver_init.py
     ~~~~~~~~~~~~~~~~
