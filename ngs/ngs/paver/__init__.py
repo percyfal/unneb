@@ -7,6 +7,7 @@
 """
 Paver project tasks
 """
+
 from paver.easy import *
 
 def threads():
@@ -110,9 +111,17 @@ def list_db():
 ##############################
 ## Functions for execution
 ##############################
-def run_cmd(cl):
+def run_cmd(cl, infile=None, outfile=None,  run=True):
     """Run a command and empty"""
-    if options.run:
+    if not options.force:
+        if path(infile).exists() and path(outfile).exists():
+            if path(infile).mtime < path(outfile).mtime:
+                run = False
+                print "-----> Task is up to date"
+    if not path(infile).exists():
+        run = False
+        print "-----> No such infile " + str(infile)
+    if run:
         options.exec_fn["fn"]("\n".join(cl))
         cl = []
     return cl
