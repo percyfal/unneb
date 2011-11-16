@@ -7,14 +7,8 @@
 """
 Paver project tasks
 """
-
+from paver.options import Namespace
 from paver.easy import *
-
-def threads():
-    return options.threads
-
-def _uptodate(infile, outfile):
-    pass
 
 ## Workflow
 ## 1. qc reads
@@ -62,13 +56,9 @@ db = dict(
         ),
     )
 
-def mysh2(command, capture = False, ignore_error=False, cwd=None):
-    sh(command, capture=False, ignore_error=False, cwd=None)
-    
-def mysh(command):
-    print command
-
-def setup_options():
+@task
+def auto():
+    """Initializes options."""
 ## Global-like options
 ## Standard setup - change in module files
     options(
@@ -80,6 +70,8 @@ def setup_options():
         db = db,
         ref = "hg19",
         paired_end=True,
+        fastq1 = None,
+        fastq2 = None,
         read1_suffix = "_1",
         read2_suffix = "_2",
         read_suffix = "",
@@ -88,20 +80,21 @@ def setup_options():
         exec_fn = dict(fn = sh),
         run = True,
         )
-
-
-## Setup the options
-setup_options()
+    options.wrapper = options.get("wrapper", "sh")
+    if options.wrapper == "sbatch":
+        import ngs.paver.cluster.sbatch
+    if not options.get("log", None) is None:
+        from ngs.paver.log import set_handler
+        set_handler(options)
 
 ##################################################
 ## Basic tasks for getting configuration
 ##################################################
-#@cmdopts(['w', 'which', ''])
+#@cmdopts(['ref=', 'r', 'reference'])
 @task
-def list_ref(which="all"):
+def list_ref():
     """List currently defined references"""
-    if which == "all":
-        print options.index_loc
+    print options.index_loc
 
 @task 
 def list_db():
@@ -111,17 +104,19 @@ def list_db():
 ##############################
 ## Functions for execution
 ##############################
-def run_cmd(cl, infile=None, outfile=None,  run=True):
+def run_cmd(cl, infile=None, outfile=None, run=True, msg=None):
     """Run a command and empty"""
     if not options.force:
         if path(infile).exists() and path(outfile).exists():
             if path(infile).mtime < path(outfile).mtime:
                 run = False
                 print "-----> Task is up to date"
-    if not path(infile).exists():
+    if not path(infile).exists() and not infile is None:
         run = False
         print "-----> No such infile " + str(infile)
     if run:
         options.exec_fn["fn"]("\n".join(cl))
+        if options.has_key("log"):
+            options.log.logger.info(str(msg))
         cl = []
     return cl

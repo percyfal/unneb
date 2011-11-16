@@ -15,26 +15,28 @@ Bwa program suite options
 """
 ## Tasks
 @task
-def align():
+def align(options):
     """Run bwa aln bwa.opts options.ref infile > outfile"""
+    msg = "Running paver.ngs.tools.bwa.align"
     prefix, ext = os.path.splitext(options.prefix)
     if not ext:
         ext = options.ext_fq
     infile = prefix + ext
     outfile = prefix + bwa["aln"]["ext_out"]
     bwa["cl"].append(" ".join([bwa["program"], "aln", bwa["aln"]["opts"], options.index_loc["bwa"][options.ref][2], infile, ">", outfile]))
-    bwa["cl"] = run_cmd(bwa["cl"], infile, outfile, options.run)
+    bwa["cl"] = run_cmd(bwa["cl"], infile, outfile, options.run, msg)
 
 @task
-def sampe():
+def sampe(options):
     """Run bwa sampe. Takes as input a fastq file or a prefix."""
+    msg = "Running paver.ngs.tools.bwa.sampe"
     prefix, ext = os.path.splitext(options.prefix)
     if not ext:
         ext = options.ext_fq
     fastq1  = prefix + options.read1_suffix + ext
     fastq2  = prefix + options.read2_suffix + ext
-    saifile1 = prefix + options.read1_suffix + ".sai"
-    saifile2 = prefix + options.read2_suffix + ".sai"
+    saifile1 = prefix + options.read1_suffix + bwa["aln"]["ext_out"]
+    saifile2 = prefix + options.read2_suffix + bwa["aln"]["ext_out"]
     out = options.prefix + bwa["sampe"]["ext_out"]
     bwa["cl"].append(" ".join([bwa["program"], "sampe", bwa["sampe"]["opts"], options.index_loc["bwa"][options.ref][2], saifile1, saifile2, fastq1, fastq2, ">", out]))
     bwa["cl"] = run_cmd(bwa["cl"], saifile1, out)
@@ -45,7 +47,7 @@ def samse():
     prefix, ext = os.path.splitext(options.prefix)
     if not ext:
         ext = options.ext_fq
-    saifile = prefix + options.read_suffix + ".sai"
+    saifile = prefix + options.read_suffix + bwa["aln"]["ext_out"]
     fastq = prefix + options.read_suffix + options.ext_fq
     out = options.prefix + bwa["samse"]["ext_out"]
     bwa["cl"].append(" ".join([bwa["program"], "samse", bwa["samse"]["opts"], options.index_loc["bwa"][options.ref][2], saifile, fastq, ">", out]))
