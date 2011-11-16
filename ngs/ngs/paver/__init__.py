@@ -10,6 +10,22 @@ Paver project tasks
 from paver.options import Namespace
 from paver.easy import *
 
+## How to check dependencies?
+def sbatch(command, label=None, capture=False, ignore_error=False, cwd=None):
+    """Runs a command, but launch it through sbatch script submission"""
+    if label is None:
+        sbatch_file = "tmp.sh"
+    else:
+        sbatch_file = path(label + ".sh")
+        fp = open(sbatch_file)
+    ## Print file to stdout
+    if tasks.environment.dry_run:
+        pass
+    sh("sbatch " + sbatch_file, capture, ignore_error, cwd)
+
+## Set a function pointer to sh or sbatch or drmaa or whatever...
+options(config = dict(sh = sh))
+
 ## Workflow
 ## 1. qc reads
 ## 2. map reads
@@ -23,6 +39,7 @@ from paver.easy import *
 ## - keep track of current prefix and file type with pointers in options
 ## - perform command and update pointers
 ## - do atomic operations
+
 
 ##################################################
 ## Initialisation of options
