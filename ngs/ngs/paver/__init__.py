@@ -59,6 +59,7 @@ db = dict(
 
 ## Global-like options
 ## Standard setup - change in module files
+## This has to be run when module is loaded, not for a particular task
 @task
 def auto():
     """Initializes options."""
@@ -81,12 +82,8 @@ def auto():
         exec_fn = dict(fn = sh),
         run = True,
         )
-    options.wrapper = options.get("wrapper", "sh")
-    if options.wrapper == "sbatch":
-        import ngs.paver.cluster.sbatch
-    if not options.get("log", None) is None:
-        from ngs.paver.log import set_handler
-        set_handler(options)
+## Run the init function
+auto()
 
 ##################################################
 ## Basic tasks for getting configuration
@@ -104,8 +101,17 @@ def list_db():
 ##############################
 ## Functions for execution
 ##############################
+def _check_options():
+    options.wrapper = options.get("wrapper", "sh")
+    if options.wrapper == "sbatch":
+        import ngs.paver.parallel.sbatch
+    if not options.get("log", None) is None:
+        from ngs.paver.log import set_handler    
+        set_handler(options)
+
 def run_cmd(cl, infile=None, outfile=None, run=True, msg=None):
     """Run a command and empty"""
+    _check_options()
     if not options.force:
         if path(infile).exists() and path(outfile).exists():
             if path(infile).mtime < path(outfile).mtime:
