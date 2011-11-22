@@ -58,6 +58,8 @@ def sbatch(command):
         print >> sys.stderr, "sbatch keyword dictionary not defined: please set options for project_id, time etc"
         sys.exit()
     kw["command_str"] = command
+    if options.get("bg", False):
+        kw["command_str"] = kw["command_str"].replace("\n", " &\n") + " &\nwait\n"
     if kw["jobname"] == "":
         kw["jobname"] = "paver_sbatch"
     kw["workdir"] = os.path.abspath(kw["workdir"])

@@ -1,10 +1,6 @@
-#!/usr/bin/env python
-# File: bwa.py
-# Created: Thu Nov  3 22:05:07 2011
-# Copyright (C) 2011 by Per Unneberg
-#
-# Author: Per Unneberg
-#
+"""
+bwa program
+"""
 import os
 
 from paver.easy import *
@@ -13,6 +9,30 @@ from ngs.paver import run_cmd
 """
 Bwa program suite options
 """
+
+@task
+def auto():
+    bwa = dict(
+        program = "bwa",
+        opts = "",
+        cl = [],
+        map_reads = map_reads,
+        aln = dict(
+            opts = "-k 1 -n 3 -t " + str(options.threads),
+            ext_out = ".sai",
+            ),
+        samse = dict(
+            opts = "",
+            ext_out = ".sam",
+            ),
+        sampe = dict(
+            opts = "",
+            ext_out = ".sam",
+            ),
+        )
+## Setup options to use bwa
+    options.aligner = bwa
+
 ## Tasks
 @task
 def align(options):
@@ -64,29 +84,6 @@ def map_reads():
     options.run = True
     bwa["cl"] = run_cmd(bwa["cl"])
 
-## For some reason need to set this as a dictionary
-## The Bunch class removes function definitions?!?
-bwa = dict(
-    program = "bwa",
-    opts = "",
-    cl = [],
-    map_reads = map_reads,
-    aln = dict(
-        opts = "-k 1 -n 3 -t " + str(options.threads),
-        ext_out = ".sai",
-        ),
-    samse = dict(
-        opts = "",
-        ext_out = ".sam",
-        ),
-    sampe = dict(
-        opts = "",
-        ext_out = ".sam",
-        ),
-    )
-
-## Setup options to use bwa
-options.aligner = bwa
 
 ##################################################
 ## Tasks to look at bwa
@@ -95,3 +92,43 @@ options.aligner = bwa
 def bwa_config():
     """List bwa configuration"""
     print options.aligner
+
+
+## solid2fastq.pl
+@task
+@cmdopts([("indir=", "i", "input directory"), ("outdir=", "o", "output directory"),
+          ("glob=", "g", "file glob"), ("csfasta=", "c", "csfasta file"),
+          ("qual=", "q", "quality file"), ("prefix=", "p", "prefix")])
+def solid2fastq():
+    """Run solid2fastq.pl.
+
+    Options (defined in options.bwa):
+
+    indir
+      input directory. Default: os.path.curdir
+
+    outdir
+      output directory. Default: os.path.curdir
+
+    glob
+      file glob
+
+    csfasta
+      csfasta file
+
+    qual
+      quality file
+
+    prefix
+      file prefix. Will look for prefix.csfasta and prefix_QV.qual
+    """
+    options.order("solid2fastq")
+    prefix = options.get("prefix", None)
+    outprefix = prefix
+    indir = path(os.path.abspath(options.get("indir", os.path.curdir)))
+    outdir = path(os.path.abspath(options.get("outdir", os.path.curdir)))
+    csfasta = indir / options.get("csfasta", prefix + ".csfasta")
+    qual = indir / options.get("qual", prefix + "_QV.qual")
+    opts = options.get("opts")
+    if csfasta.exists():
+        cl = " ".join(["solid2fastq.pl", prefix, outprefix])

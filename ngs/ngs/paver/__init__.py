@@ -1,12 +1,7 @@
-# File: __init__.py
-# Created: Mon Oct 24 17:01:30 2011
-# Copyright (C) 2011 by Per Unneberg
-#
-# Author: Per Unneberg
-#
 """
 Paver project tasks
 """
+import os
 from paver.easy import *
 
 ## Workflow
@@ -76,14 +71,16 @@ def auto():
         fastq2 = None,
         read1_suffix = "_1",
         read2_suffix = "_2",
-        read_suffix = "",
         ext_fq = ".fastq",
         index_loc = index_loc,
         exec_fn = dict(fn = sh),
         run = True,
         )
+    options.read_suffix = lambda: options.paired_end and options.read1_suffix or ""
 ## Run the init function
 auto()
+
+
 
 ##################################################
 ## Basic tasks for getting configuration
@@ -109,9 +106,17 @@ def _check_options():
         from ngs.paver.log import set_handler    
         set_handler(options)
 
+@task
+def process_cl():
+    """Task to process current options.cl"""
+    cl = options.cl
+    options.cl = []
+    run_cmd(cl, None, None, options.get("run"), msg="Running process_cl to cleanup cl")
+    
 def run_cmd(cl, infile=None, outfile=None, run=True, msg=None):
     """Run a command and empty"""
     _check_options()
+    options.cl += cl
     if not options.force:
         if path(infile).exists() and path(outfile).exists():
             if path(infile).mtime < path(outfile).mtime:
@@ -121,8 +126,22 @@ def run_cmd(cl, infile=None, outfile=None, run=True, msg=None):
         run = False
         print "-----> No such infile " + str(infile)
     if run:
-        options.exec_fn["fn"]("\n".join(cl))
+        options.exec_fn["fn"]("\n".join(options.cl))
         if options.has_key("log"):
             options.log.logger.info(str(msg))
-        cl = []
-    return cl
+        options.cl = []
+
+## Simple getters
+def current_prefix(ext=""):
+    """Return current prefix + possible extension"""
+    if not options.prefix is None:
+        return options.prefix + ext
+    else:
+        return None
+
+def prefix(obj):
+    """Strip read suffices and file name extension"""
+    ret = path(obj).stripext()
+    ret = ret.rstrip(options.read_suffix).rstrip(options.read1_suffix).rstrip(options.read2_suffix)
+    return os.path.basename(ret)
+

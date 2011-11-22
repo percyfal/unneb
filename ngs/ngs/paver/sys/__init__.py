@@ -9,7 +9,7 @@ from paver.easy import *
 from ngs.paver import run_cmd
 
 @task
-@cmdopts([('indir=', 'i', 'indir'), ('outdir=', 'o', 'outdir'),
+@cmdopts([('indir=', 'i', 'indir'), ('outdir=', 'o', 'outdir'), ('prefix=', 'p', 'prefix links'),
           ('glob=', 'g', 'glob for relink'), ('rename=', 'r', 'comma-separated patterns for renaming')])
 def relink(options):
     """Relink a bunch of files.
@@ -25,6 +25,9 @@ def relink(options):
     glob
       file glob. List of files to relink
 
+    prefix
+      prefix for links. Can be a function that operates on the file name.
+      
     rename
       comma-separated string of format \"from,to\". After linking, attempts to rename symlinks
     """

@@ -4,6 +4,8 @@ from paver.easy import *
 from paver.doctools import *
 from ngs.paver import *
 from ngs.paver.sys import *
+from ngs.paver.tools.gatk import *
+from ngs.paver.tools.picard import *
 #from ngs.paver.tools.bwa import *
 #from ngs.paver.tools.picard import *
 ## import ngs.paver.log
@@ -12,24 +14,59 @@ from ngs.paver.sys import *
 #from ngs.paver.pipelines.pipelines import exome_pipeline
 import yaml
 
+@task
+def auto():
+    testdir = path(os.path.dirname(os.path.abspath(__file__)))
+    sampledir = testdir / os.pardir / "data" / "fastq"
 ## Project options
-options(
-    prefix = "test",
-    samples = ["test", "newtest"],
-    infile = ["test_1.fastq", "test_2.fastq"],
-    ref = "mm9",
-    )
-## Set log dir to log
-options.log = Bunch(dir = path("log"))
-options.pbzip2 = Bunch(opts = "-dv")
-options.tar = Bunch(opts = "-xvf")
+    options(
+        prefix = "test",
+        aligner = "bwa",
+        samples = ["test", "newtest"],
+        infile = [sampledir / "test_1.fastq", sampledir / "test_2.fastq"],
+        ref = "hg19",
+        force = True,
+        GATK = Bunch(
+            gatk_home = "/bubo/sw/apps/bioinfo/GATK/1.2.12/",
+            INPUT= "aoei",
+            ),
+        picard_config = Bunch(
+            picard_home = "/bubo/sw/apps/bioinfo/picard/1.41/",
+            ),
+        )
+    
+    options.FastqToSam = Bunch(
+        FASTQ = options.infile[0],
+        FASTQ2 = options.infile[1],
+        OUTPUT = "tabor",
+        )
+    options.MergeBamAlignment = Bunch(
+        UNMAPPED_BAM = "test_1.bam",
+        )
 
-def setup_fastq_files():
+## Set log dir to log
+    options.log = Bunch(dir = path("log"))
+    options.pbzip2 = Bunch(opts = "-dv")
+    options.tar = Bunch(opts = "-xvf")
+    options.sbatch = Bunch(
+        kw = dict(
+            project_id = 'a2010003',
+            time = "50:00:00",
+            constraint = '',
+            jobname = '',
+            workdir = os.path.curdir,
+            partition = 'node',
+            cores = '8',
+            mail_type = 'ALL',
+            mail_user = 'per.unneberg@scilifelab.se',
+            header = '',
+            footer = '',
+            command_str = '',
+            )
+        )
+    
     options.fastq1 = options.infile[0]
     options.fastq2 = options.infile[1]
-
-# Ugly hack to test
-setup_fastq_files()
 
 @task
 def align_samples():
@@ -62,9 +99,7 @@ def task3(options):
     ref = options.get('ref')
     print ref
 
-
 kw = dict(ref="hg19")
-
 
 @task
 def task4(options):
@@ -76,3 +111,28 @@ def task4(options):
 def task5():
     """Pass options to task 4"""
     task4(test="noo")
+
+@task
+def run_gatk():
+    """Run gatk"""
+    options.GATK.INPUT="oeu"
+    options.sbatch.kw["outfile"] = "tabort.sh"
+    environment.call_task("ngs.paver.tools.gatk.GATK")
+
+@task
+def run_fts():
+    """Run fastqtosam"""
+    options.sbatch.kw["outfile"] = "testit.sh"
+    options.FastqToSam = Bunch(FASTQ = options.infile[0],
+                               FASTQ2 = options.infile[1],
+                               OUTPUT = "test.bam",
+                               opts = "RUN_DATE=ooeuoe"
+                               )
+    options.run=False
+    environment.call_task("ngs.paver.tools.picard.FastqToSam")
+    options.MergeBamAlignment = Bunch(
+        UNMAPPED_BAM = prefix(options.infile[0]) + "_fastq.bam",
+        )
+    options.run=True
+    environment.call_task("ngs.paver.tools.picard.MergeBamAlignment")
+
