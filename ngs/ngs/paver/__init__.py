@@ -7,24 +7,7 @@
 """
 Paver project tasks
 """
-from paver.options import Namespace
 from paver.easy import *
-
-## How to check dependencies?
-def sbatch(command, label=None, capture=False, ignore_error=False, cwd=None):
-    """Runs a command, but launch it through sbatch script submission"""
-    if label is None:
-        sbatch_file = "tmp.sh"
-    else:
-        sbatch_file = path(label + ".sh")
-        fp = open(sbatch_file)
-    ## Print file to stdout
-    if tasks.environment.dry_run:
-        pass
-    sh("sbatch " + sbatch_file, capture, ignore_error, cwd)
-
-## Set a function pointer to sh or sbatch or drmaa or whatever...
-options(config = dict(sh = sh))
 
 ## Workflow
 ## 1. qc reads
@@ -40,10 +23,10 @@ options(config = dict(sh = sh))
 ## - perform command and update pointers
 ## - do atomic operations
 
-
-##################################################
-## Initialisation of options
-##################################################
+##############################
+## Index locations
+## Read from galaxy config
+##############################
 ## Tuple with <unique_build_id>   <dbkey>   <display_name>   <file_path>
 index_loc = dict(
     bowtie = dict(
@@ -64,6 +47,7 @@ index_loc = dict(
         unknown = tuple(["index","unknown","/bubo/nobackup/uppnex/reference/biodata/genomes/Hsapiens/hg19/seq/hg19.fa"]),
         ),
     )
+
 db = dict(
     dbsnp = dict(
         dbsnp132 = tuple(["dbsnp132", ""]),
@@ -73,11 +57,11 @@ db = dict(
         ),
     )
 
+## Global-like options
+## Standard setup - change in module files
 @task
 def auto():
     """Initializes options."""
-## Global-like options
-## Standard setup - change in module files
     options(
         aligner = None,
         prefix = None,
@@ -107,7 +91,6 @@ def auto():
 ##################################################
 ## Basic tasks for getting configuration
 ##################################################
-#@cmdopts(['ref=', 'r', 'reference'])
 @task
 def list_ref():
     """List currently defined references"""
