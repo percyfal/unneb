@@ -55,32 +55,37 @@ db = dict(
 ## Global-like options
 ## Standard setup - change in module files
 ## This has to be run when module is loaded, not for a particular task
-@task
-def auto():
-    """Initializes options."""
-    options(
-        aligner = None,
-        prefix = None,
-        cl = [],
-        force = False,
-        threads = 8,
-        db = db,
-        ref = "hg19",
-        paired_end=True,
-        fastq1 = None,
-        fastq2 = None,
-        read1_suffix = "_1",
-        read2_suffix = "_2",
-        ext_fq = ".fastq",
-        index_loc = index_loc,
-        exec_fn = dict(fn = sh),
-        run = True,
-        )
-    options.read_suffix = lambda: options.paired_end and options.read1_suffix or ""
-## Run the init function
-auto()
+# @task
+# def auto():
+#     """Initializes options."""
+options(
+    aligner = None,
+    prefix = None,
+    cl = [],
+    force = False,
+    threads = 8,
+    db = db,
+    ref = "hg19",
+    paired_end=True,
+    fastq1 = None,
+    fastq2 = None,
+    read1_suffix = "_1",
+    read2_suffix = "_2",
+    ext_fq = ".fastq",
+    index_loc = index_loc,
+    exec_fn = dict(fn = sh),
+    run = True,
+    )
+options.read_suffix = lambda: options.paired_end and options.read1_suffix or ""
 
-
+##############################
+## auto task
+##############################
+# @task
+# def auto():
+#     """auto task: check namespaces"""
+#     print options
+#     print "running auto"
 
 ##################################################
 ## Basic tasks for getting configuration
@@ -95,6 +100,22 @@ def list_db():
     """List variation databases"""
     print options.db
 
+@task
+@cmdopts([("section=", "s", "select section to print")])
+def print_options():
+    """List options"""
+    import pprint
+    pp = pprint.PrettyPrinter(indent = 4)
+    section = options.get("section", None)
+    if section is None:
+        pp.pprint(options)
+    else:
+        if options.has_key(section):
+            sec = options.get(section)
+            pp.pprint(sec)
+        else:
+            pass
+
 ##############################
 ## Functions for execution
 ##############################
@@ -102,6 +123,8 @@ def _check_options():
     options.wrapper = options.get("wrapper", "sh")
     if options.wrapper == "sbatch":
         import ngs.paver.parallel.sbatch
+    if options.wrapper == "drmaa":
+        import ngs.paver.parallel.DRMAA
     if not options.get("log", None) is None:
         from ngs.paver.log import set_handler    
         set_handler(options)
@@ -126,12 +149,14 @@ def run_cmd(cl, infile=None, outfile=None, run=True, msg=None):
         run = False
         print "-----> No such infile " + str(infile)
     if run:
-        options.exec_fn["fn"]("\n".join(options.cl))
+        options.exec_fn["fn"](options.cl)
         if options.has_key("log"):
             options.log.logger.info(str(msg))
         options.cl = []
 
+##############################
 ## Simple getters
+##############################        
 def current_prefix(ext=""):
     """Return current prefix + possible extension"""
     if not options.prefix is None:
@@ -139,9 +164,10 @@ def current_prefix(ext=""):
     else:
         return None
 
-def prefix(obj):
+def get_prefix(obj):
     """Strip read suffices and file name extension"""
-    ret = path(obj).stripext()
-    ret = ret.rstrip(options.read_suffix).rstrip(options.read1_suffix).rstrip(options.read2_suffix)
-    return os.path.basename(ret)
+    prefix, ext = os.path.splitext(obj)
+    import re
+    prefix = re.sub("%s|%s|%s" % (options.read_suffix, options.read1_suffix, options.read2_suffix), "", prefix)
+    return os.path.basename(prefix), ext
 

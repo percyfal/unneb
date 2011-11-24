@@ -1,27 +1,37 @@
-#!/usr/bin/env python
-# File: samtools.py
-# Created: Thu Nov  3 23:08:23 2011
-# Copyright (C) 2011 by Per Unneberg
-#
-# Author: Per Unneberg
-#
-
 """
 samtools programs
 """
+import os
 from paver.easy import *
+from ngs.paver import run_cmd
 
-samtools = dict(
+##############################
+## samtools default options
+##############################
+options.samtools_default = Bunch(
     program = "samtools",
     opts = "",
     view = dict(
         opts = "-bS",
         ext_out = None,
         ),
+    sam2bam = dict(
+        opts = "-b",
+        ext_out = ".bam",
+        cl = sam2bam,
+        ),
+    samsort = dict(
+        opts = "",
+        ext_out = ".sort.bam",
+        cl = samsort,
+        ),
     )
 
-## Functions
+##############################
+## Tasks
+##############################
 @task
+@cmdopts([()])
 def sam2bam():
     if options.prefix is None:
         return
@@ -41,19 +51,3 @@ def samsort():
     samtools["cl"].append(" ".join([samtools["program"], "sort", 
                                    bamfile, out]))
     sh(samtools["cl"])
-    
-samtools = dict(
-    program = "samtools",
-    opts = "",
-    cl = [],
-    sam2bam = dict(
-        opts = "-b",
-        ext_out = ".bam",
-        cl = sam2bam,
-        ),
-    samsort = dict(
-        opts = "",
-        ext_out = ".sort.bam",
-        cl = samsort,
-        ),
-    )

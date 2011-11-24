@@ -6,20 +6,18 @@ import os
 from paver.easy import *
 from ngs.paver import run_cmd
 
-## Setup options
-@task
-def auto():
-    """Initialize GATK options"""
-    options(
-        gatk_config = Bunch(
-            gatk_home = os.path.abspath("./"),
-            opts = "",
-            javamem = "-Xmx6g",
-            )
-        )
+##############################
+## GATK default options
+##############################
+options.gatk_default = Bunch(
+    gatk_home = os.path.abspath("./"),
+    opts = "",
+    javamem = "-Xmx6g",
+    )
 
-
-@needs("ngs.paver.tools.gatk.auto")
+##############################
+## gatk default wrapper
+##############################
 @task
 @cmdopts([('program=', 'p', 'gatk program'), ('opts=', 'o', 'gatk program options'), ('gatk_home=', 'g', 'gatk home'), ('INPUT=', 'I', 'input')])
 def GATK():
@@ -42,7 +40,7 @@ def GATK():
     gatk_home
       location of gatk
     """
-    options.order("GATK", "gatk_config")
+    options.order("GATK", "gatk_default")
     INPUT = options.get("INPUT", "")
     OUTPUT = options.get("OUTPUT", "")
     program = options.get("program", "")
@@ -55,24 +53,28 @@ def GATK():
 
 
 @task
-def IndelRealigner():
-    """Run the indel realigner"""
-    config = gatk["IndelRealigner"]
-    infile = [options.prefix + config["ext_in"][0],
-              options.prefix + config["ext_in"][1]]
-    outfile = options.prefix + config["ext_out"]
-    gatk["cl"].append(" ".join([gatk["program"], "-T IndelRealigner", 
-                                #[" ".join([config["opt_in"][i], infile[i]]) for i in range(0, len(infile))],
-                                "-R", options.reference, 
-                                "-o", outfile, config["opts"]]))
-def realign():
-    """Realign reads"""
-    environment.call_task("paverpipe.gatk.IndelRealigner")
-    return gatk["cl"]
+@cmdopts([("INPUT_LIST=", "I", "input list"), ("OUTPUT=", "o", "output file name base")])
+def DepthOfCoverage():
+    """Run DepthOfCoverage
+        
+    Options:
 
-## Some tasks
-# gatk["realign"] = realign
+    INPUT_LIST
+      List of input files
+      
+    OUTPUT
+      Output file name base
 
-# options(
-#     GATK = gatk
-#     )
+    opts
+      command line options to pass
+    """
+    options.order("DepthOfCoverage", "gatk_default")
+    input_list = options.get("INPUT_LIST", None)
+    output = options.get("OUTPUT", "depthofcoverage")
+    javamem = options.get("javamem")
+    opts = options.get("opts", "")
+    gatk_home = options.get("gatk_home")
+    cl = [" ".join(["java -jar", javamem, path(gatk_home) / "GenomeAnalysisTK.jar", "-T", "DepthOfCoverage", "-I", str(input_list), "-o", str(output), str(opts)])]
+    if input_list:
+        run_cmd(cl, None, None, options.run, "Running DepthOfCoverage")
+    

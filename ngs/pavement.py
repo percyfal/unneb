@@ -15,7 +15,8 @@ setup(
         "bcbio-nextgen >= 0.2",
         ],
     test_suite = 'nose.collector',
-    scripts = ['scripts/project_paver_init.py']
+    scripts = ['scripts/project_paver_init.py',
+               'scripts/teqc_enrichment.py']
 )
 
 @task

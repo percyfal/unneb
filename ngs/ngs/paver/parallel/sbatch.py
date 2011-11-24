@@ -30,46 +30,39 @@ ${header}
 ${command_str}
 ${footer}
 ''')
-
-options.sbatch_config = Bunch(
-    template = SBATCH_TEMPLATE
-    # kw = Bunch(
-    #     project_id = '',
-    #     time = "50:00:00",
-    #     constraint = '',
-    #     jobname = '',
-    #     workdir = os.path.curdir,
-    #     partition = 'node',
-    #     cores = '8',
-    #     mail_type = 'ALL',
-    #     mail_user = '',
-    #     header = '',
-    #     footer = '',
-    #     command_str = '',
-    #     )
-    )
+options.sbatch_template = SBATCH_TEMPLATE
+kw = Bunch(
+    mail_type = "ALL",
+    header = "",
+    footer = "",
+    constraint = "",
+    partition = "node",
+    jobname = "paver_sbatch",
+)
 
 # TODO: should check that kw has all parameters
 def sbatch(command):
     """Wraps an external command in a sbatch template script"""
-    options.order("sbatch", "sbatch_config")
-    kw = options.get("kw", None)
+    command_list = "\n".join(command)
+    options.order("sbatch")
+    sbatchkw = options.get("sbatch", None)
+    kw.update(sbatchkw)
     if kw is None:
         print >> sys.stderr, "sbatch keyword dictionary not defined: please set options for project_id, time etc"
         sys.exit()
-    kw["command_str"] = command
+    kw.command_str = command_list
     if options.get("bg", False):
-        kw["command_str"] = kw["command_str"].replace("\n", " &\n") + " &\nwait\n"
-    if kw["jobname"] == "":
-        kw["jobname"] = "paver_sbatch"
-    kw["workdir"] = os.path.abspath(kw["workdir"])
+        kw.command_str = kw.command_str.replace("\n", " &\n") + " &\nwait\n"
+    if kw.jobname == "":
+        kw.jobname = "paver_sbatch"
+    kw.workdir = os.path.abspath(kw.workdir)
     if options.dry_run:
-        print >> sys.stderr, options.sbatch_config.template.render(**kw)
+        print >> sys.stderr, options.sbatch_template.render(**kw)
     else:
-        outfile = options.sbatch.kw.get("outfile", None)
+        outfile = kw.get("outfile", kw.jobname + ".sh")
         if not outfile is None:
             fp = open(outfile, "w")
-            fp.write(options.sbatch_config.template.render(**kw))
+            fp.write(options.sbatch_template.render(**kw))
             fp.close()
 
 ## Set exec_fn to sbatch

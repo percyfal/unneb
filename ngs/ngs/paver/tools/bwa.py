@@ -6,60 +6,69 @@ import os
 from paver.easy import *
 from ngs.paver import run_cmd
 
-"""
-Bwa program suite options
-"""
-
-@task
-def auto():
-    bwa = dict(
-        program = "bwa",
+##############################
+## bwa default options
+##############################
+options.bwa_default = Bunch(
+    program = "bwa",
+    opts = "",
+    cl = [],
+    #map_reads = map_reads,
+    aln = dict(
+        opts = "-k 1 -n 3 -t " + str(options.threads),
+        ext_out = ".sai",
+        ),
+    samse = dict(
         opts = "",
-        cl = [],
-        map_reads = map_reads,
-        aln = dict(
-            opts = "-k 1 -n 3 -t " + str(options.threads),
-            ext_out = ".sai",
-            ),
-        samse = dict(
-            opts = "",
-            ext_out = ".sam",
-            ),
-        sampe = dict(
-            opts = "",
-            ext_out = ".sam",
-            ),
-        )
-## Setup options to use bwa
-    options.aligner = bwa
+        ext_out = ".sam",
+        ),
+    sampe = dict(
+        opts = "",
+        ext_out = ".sam",
+        ),
+    )
 
+##############################
 ## Tasks
+##############################
 @task
-def align(options):
+@cmdopts([("prefix=", "p", "file prefix"), ("ext_in=", "e", "file extension (suffix)"),
+          ("ext_out=", "o", "outfile extension (suffix)")])
+def align():
     """Run bwa aln bwa.opts options.ref infile > outfile"""
+    options.order("align", "bwa_default", add_rest=True)
     msg = "Running paver.ngs.tools.bwa.align"
-    prefix, ext = os.path.splitext(options.prefix)
+    prefix = options.align.get("prefix", options.get("prefix"))
+    if prefix is None:
+        return
+    prefix, ext = os.path.splitext(prefix)
     if not ext:
-        ext = options.ext_fq
+        ext = options.align.get("ext_in", options.ext_fq)
     infile = prefix + ext
-    outfile = prefix + bwa["aln"]["ext_out"]
-    bwa["cl"].append(" ".join([bwa["program"], "aln", bwa["aln"]["opts"], options.index_loc["bwa"][options.ref][2], infile, ">", outfile]))
-    bwa["cl"] = run_cmd(bwa["cl"], infile, outfile, options.run, msg)
+    outfile = prefix + options.get("ext_out", options.get("aln")["ext_out"])
+    cl = [" ".join([options.get("program"), "aln", options.get("aln")["opts"], options.index_loc["bwa"][options.ref][2], infile, ">", outfile])]
+    run_cmd(cl, infile, outfile, options.run, msg)
 
 @task
+@cmdopts([("prefix=","p", "file prefix"), ("ext_in=", "e", "file extension (suffix)"),
+          ("ext_out=", "o", "outfile extension (suffix)") ])
 def sampe(options):
     """Run bwa sampe. Takes as input a fastq file or a prefix."""
     msg = "Running paver.ngs.tools.bwa.sampe"
-    prefix, ext = os.path.splitext(options.prefix)
+    options.order("sampe", "bwa_default")
+    prefix = options.sampe.get("prefix", options.get("prefix"))
+    if prefix is None:
+        return
+    prefix, ext = os.path.splitext(prefix)
     if not ext:
-        ext = options.ext_fq
-    fastq1  = prefix + options.read1_suffix + ext
-    fastq2  = prefix + options.read2_suffix + ext
-    saifile1 = prefix + options.read1_suffix + bwa["aln"]["ext_out"]
-    saifile2 = prefix + options.read2_suffix + bwa["aln"]["ext_out"]
-    out = options.prefix + bwa["sampe"]["ext_out"]
-    bwa["cl"].append(" ".join([bwa["program"], "sampe", bwa["sampe"]["opts"], options.index_loc["bwa"][options.ref][2], saifile1, saifile2, fastq1, fastq2, ">", out]))
-    bwa["cl"] = run_cmd(bwa["cl"], saifile1, out)
+        ext = options.sampe.get("ext_in", options.ext_fq)
+    fastq1  = prefix + options.get("read1_suffix") + ext
+    fastq2  = prefix + options.get("read2_suffix") + ext
+    saifile1 = prefix + options.get("read1_suffix") + options.get("aln")["ext_out"]
+    saifile2 = prefix + options.get("read2_suffix") + options.get("aln")["ext_out"]
+    out = prefix + options.get("sampe")["ext_out"]
+    cl = " ".join([options.get("program"), "sampe", options.get("sampe")["opts"], options.index_loc["bwa"][options.ref][2], saifile1, saifile2, fastq1, fastq2, ">", out])
+    run_cmd(cl, saifile1, out)
 
 @task
 def samse():
@@ -77,6 +86,7 @@ def samse():
 def map_reads():
     """Collects bwa functions for mapping. Runs aligner and samse/sampe"""
     options.run = False
+    options.align = Bunch()
     if options.paired_end:
         environment.call_task("ngs.paver.tools.bwa.align")
         environment.call_task("ngs.paver.tools.bwa.align")
@@ -132,3 +142,4 @@ def solid2fastq():
     opts = options.get("opts")
     if csfasta.exists():
         cl = " ".join(["solid2fastq.pl", prefix, outprefix])
+

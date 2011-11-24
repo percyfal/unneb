@@ -43,7 +43,7 @@ def relink(options):
             print >> sys.stderr, "target file %s exists: not symlinking" % tgt
             continue
         if options.dry_run:
-            print "symlinking %s -> %s" % (tgt, f)
+            print >> sys.stderr, "symlinking %s -> %s" % (tgt, f)
         else:
             os.symlink(f, tgt)
 
@@ -78,6 +78,40 @@ def pbzip2(options, info):
         cl = [" ".join(['pbzip2', opts, pattern])]
         if files:
             run_cmd(cl, files.next(), None, options.run, "Running pbzip2")
+
+@task
+@cmdopts([('glob=', 'g', 'glob for pigz'), ('decompress','d','decompress'), ('opts=', 'o', 'options')])
+def pigz(options):
+    """Run pigz on a bunch of files.
+
+    Options (set in sys.pbzip2 section by default).
+
+    basedir
+       directory to work in. Default: os.path.curdir
+
+    pattern
+       file glob to look for under basedir. Default: None
+
+    opts
+       command line options to pass to pbzip2. Default: -v
+
+    decompress
+       decompress file. Default: False
+    """
+    options.order('pigz')
+    basedir = path(os.path.abspath(options.get('basedir', path(os.path.curdir))))
+    opts = options.get('opts', "-v")
+    decompress = options.get('decompress', False)
+    pattern = options.get('glob', None)
+    if decompress:
+        opts = opts + "d"
+    if not pattern is None:
+        files = basedir.walkfiles(pattern)
+        cl = [" ".join(['pigz', opts, pattern])]
+        if files:
+            run_cmd(cl, files.next(), None, options.run, "Running pigz")
+
+
 
 @task
 @cmdopts([('archive=', 'a', 'archive for tar'), ('glob=', 'g', 'glob for tar'), ('opts=', 'o', 'options')])
