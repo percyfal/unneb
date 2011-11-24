@@ -2,18 +2,21 @@
 GATK - wrapper for GenomeAnalysisTK.jar
 """
 import os
-
+import glob
 from paver.easy import *
 from ngs.paver import run_cmd
 
 ##############################
 ## GATK default options
 ##############################
-options.gatk_default = Bunch(
-    gatk_home = os.path.abspath("./"),
-    opts = "",
-    javamem = "-Xmx6g",
+options(
+    gatk_default = Bunch(
+        gatk_home = os.path.abspath("./"),
+        opts = "",
+        javamem = "-Xmx6g",
+        ),
     )
+    
 
 ##############################
 ## gatk default wrapper
@@ -51,11 +54,11 @@ def GATK():
     if INPUT:
         run_cmd(cl, None, None, options.run, "Running gatk program %s" % program)
 
-
 @task
-@cmdopts([("INPUT_LIST=", "I", "input list"), ("OUTPUT=", "o", "output file name base")])
+@cmdopts([("INPUT_LIST=", "I", "input list"), ("OUTPUT=", "o", "output file name base"),
+          ("bam=", "b", "bam glob")])
 def DepthOfCoverage():
-    """Run DepthOfCoverage
+    """Run DepthOfCoverage.
         
     Options:
 
@@ -65,16 +68,24 @@ def DepthOfCoverage():
     OUTPUT
       Output file name base
 
+    bam
+      glob of bam files
+
     opts
       command line options to pass
     """
     options.order("DepthOfCoverage", "gatk_default")
-    input_list = options.get("INPUT_LIST", None)
     output = options.get("OUTPUT", "depthofcoverage")
+    bamfiles = glob.glob(options.get("bam", ""))
+    if len(bamfiles) > 0:
+        with open("bamfiles.list", "w") as out_handle:
+            for bf in bamfiles:
+                out_handle.write(os.path.abspath(bf) + "\n")
+    input_list = options.get("INPUT_LIST", "bamfiles.list")
     javamem = options.get("javamem")
     opts = options.get("opts", "")
     gatk_home = options.get("gatk_home")
     cl = [" ".join(["java -jar", javamem, path(gatk_home) / "GenomeAnalysisTK.jar", "-T", "DepthOfCoverage", "-I", str(input_list), "-o", str(output), str(opts)])]
-    if input_list:
+    if os.path.exists("bamfiles.list"):
         run_cmd(cl, None, None, options.run, "Running DepthOfCoverage")
     

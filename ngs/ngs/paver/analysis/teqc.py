@@ -18,7 +18,7 @@ def teqc():
 
     Uses pybedtools to do the magic.
     """
-    options.order("teqc")
+    options.order("teqc", add_rest=True)
     bamfile = options.get("abam", None)
     targetfile = options.get("target", None)
     ucscgenome = options.get("ucscgenome", None)

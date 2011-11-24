@@ -26,7 +26,7 @@ def main(bamfile, bedfile):
     print "Target size:\t%s" % target_size
     try:
         chroms = getattr(genome_registry, options.build)
-        genome_size = sum([x[1] for i in chroms.values()])
+        genome_size = sum([x[1] for x in chroms.values()])
     except:
         pass
     print "Genome size:\t%s" % genome_size
