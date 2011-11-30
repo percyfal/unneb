@@ -125,6 +125,9 @@ def _check_options():
         import ngs.paver.parallel.sbatch
     if options.wrapper == "drmaa":
         import ngs.paver.parallel.DRMAA
+    # sh should check options.cl - if longer than 1, don't run
+    if options.wrapper == "sh":
+        options.cl = "\n".join(options.cl)
     if not options.get("log", None) is None:
         from ngs.paver.log import set_handler    
         set_handler(options)
@@ -135,11 +138,11 @@ def process_cl():
     cl = options.cl
     options.cl = []
     run_cmd(cl, None, None, options.get("run"), msg="Running process_cl to cleanup cl")
-    
+
 def run_cmd(cl, infile=None, outfile=None, run=True, msg=None):
     """Run a command and empty"""
-    _check_options()
     options.cl += cl
+    _check_options()
     if not options.force:
         if path(infile).exists() and path(outfile).exists():
             if path(infile).mtime < path(outfile).mtime:

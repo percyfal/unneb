@@ -18,13 +18,17 @@ options.samtools_default = Bunch(
     sam2bam = dict(
         opts = "-b",
         ext_out = ".bam",
-        cl = sam2bam,
+        #cl = sam2bam,
         ),
     samsort = dict(
         opts = "",
         ext_out = ".sort.bam",
-        cl = samsort,
+        #cl = samsort,
         ),
+    mpileup = dict(
+        opts = "-us",
+        ext_out = "",
+        )
     )
 
 ##############################
@@ -51,3 +55,27 @@ def samsort():
     samtools["cl"].append(" ".join([samtools["program"], "sort", 
                                    bamfile, out]))
     sh(samtools["cl"])
+
+@task
+@cmdopts([("INPUT=", "I", "input file"), ("outfile=", "o", "outfile"),
+          ("reference=", "r", "reference file")])
+def mpileup():
+    """Run samtools mpileup.
+    
+    Options:
+
+    INPUT
+      Input file
+    outfile 
+      output file
+    reference
+      reference sequence
+    """
+    options.order(options.get("samtools_default")["mpileup"], "samtools_default", add_rest=True)
+    INPUT = options.get("INPUT", "")
+    ref = options.index_loc["sam_fa"][options.ref][2]
+    opts = options.get("opts", "")
+    if INPUT:
+        outfile = options.get("outfile", os.path.basename(INPUT) + ".mpileup")
+        cl = [" ".join([options.get("program"), "mpileup", str(opts), "-f", ref, INPUT, ">", outfile])]
+        run_cmd(cl, INPUT, outfile, options.run, "running samtools mpileup")

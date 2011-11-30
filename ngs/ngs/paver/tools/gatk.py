@@ -56,7 +56,7 @@ def GATK():
 
 @task
 @cmdopts([("INPUT_LIST=", "I", "input list"), ("OUTPUT=", "o", "output file name base"),
-          ("bam=", "b", "bam glob")])
+          ("bam=", "b", "bam glob"), ("REF=", "R", "reference genome"), ("TARGET=", "L", "target sequence")])
 def DepthOfCoverage():
     """Run DepthOfCoverage.
         
@@ -85,7 +85,7 @@ def DepthOfCoverage():
     javamem = options.get("javamem")
     opts = options.get("opts", "")
     gatk_home = options.get("gatk_home")
-    cl = [" ".join(["java -jar", javamem, path(gatk_home) / "GenomeAnalysisTK.jar", "-T", "DepthOfCoverage", "-I", str(input_list), "-o", str(output), str(opts)])]
+    cl = [" ".join(["java -jar", javamem, path(gatk_home) / "GenomeAnalysisTK.jar", "-T", "DepthOfCoverage", "-I", str(input_list), "-o", str(output), "-R", options.get("REF"), "-L", options.get("TARGET"), str(opts)])]
     if os.path.exists("bamfiles.list"):
         run_cmd(cl, None, None, options.run, "Running DepthOfCoverage")
     

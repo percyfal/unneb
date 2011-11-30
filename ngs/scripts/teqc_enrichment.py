@@ -3,7 +3,7 @@
 Calculate target enrichment using pybedtools
 
 Usage:
-    teqc_enrichment.py [options] -abam <bamfile> -b <bedfile>
+    teqc_enrichment.py [options] <bamfile> <bedfile>
 """
 
 import os
@@ -16,7 +16,7 @@ from pybedtools import genome_registry
 def main(bamfile, bedfile):
     abam = pybedtools.BedTool(bamfile)
     bed = pybedtools.BedTool(bedfile)
-    on_target = abam.intersect(bed).count()
+    on_target = abam.intersect(bed, stream=True).count()
     mapped = abam.count()
     print "Mapped reads:\t%s" % mapped
     print "On target:\t%s" % on_target
@@ -28,7 +28,8 @@ def main(bamfile, bedfile):
         chroms = getattr(genome_registry, options.build)
         genome_size = sum([x[1] for x in chroms.values()])
     except:
-        pass
+        print "cannot find genome build %s " % options.build
+        sys.exit()
     print "Genome size:\t%s" % genome_size
         
     outfile = os.path.abspath(os.path.splitext(bamfile)[0] + ".enrichment_metrics")
@@ -37,8 +38,8 @@ def main(bamfile, bedfile):
     fp = open(outfile, "w")
     fp.write("# Run date: %s\n" % strftime("%a, %d %b %Y %H:%M:%S", gmtime()))
     fp.write("# Command: %s\n" % " ".join(sys.argv))
-    fp.write("MAPPED\tON_TARGET\tTARGET_SIZE\tGENOME_SIZE\tENRICHMENT\n")
-    fp.write("%s\t%s\t%s\t%s\t%.5f\n" % (mapped, on_target, target_size, genome_size, on_target_fraction/target_fraction))
+    fp.write("MAPPED\tON_TARGET\tTARGET_SIZE\tGENOME_SIZE\tENRICHMENT\tONOFF_RATIO\n")
+    fp.write("%s\t%s\t%s\t%s\t%.5f\t%.5f\n" % (mapped, on_target, target_size, genome_size, on_target_fraction/target_fraction, on_target_fraction))
     fp.close()
     
 if __name__ == "__main__":

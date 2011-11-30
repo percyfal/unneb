@@ -13,6 +13,7 @@ setup(
     install_requires = [
         "PyYAML >= 3.09",
         "unneb-ngs",
+        "asciitable",
         ],
     test_suite = 'nose.collector',
     scripts = []
