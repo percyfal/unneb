@@ -72,10 +72,10 @@ def mpileup():
       reference sequence
     """
     options.order(options.get("samtools_default")["mpileup"], "samtools_default", add_rest=True)
-    INPUT = options.get("INPUT", "")
+    INPUT = os.path.abspath(options.get("INPUT", ""))
     ref = options.index_loc["sam_fa"][options.ref][2]
     opts = options.get("opts", "")
     if INPUT:
-        outfile = options.get("outfile", os.path.basename(INPUT) + ".mpileup")
+        outfile = options.get("outfile", os.path.abspath(os.path.splitext(INPUT)[0] + ".mpileup"))
         cl = [" ".join([options.get("program"), "mpileup", str(opts), "-f", ref, INPUT, ">", outfile])]
         run_cmd(cl, INPUT, outfile, options.run, "running samtools mpileup")

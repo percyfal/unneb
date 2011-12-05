@@ -1,4 +1,5 @@
 import csv
+import re
 import itertools
 import asciitable.core as core
 from asciitable.fixedwidth import FixedWidthHeader, FixedWidth
@@ -8,7 +9,7 @@ try:
 except AttributeError:
     izip = zip
 
-
+## Minor modifications from asciitable classes
 class FixedWidthRstSplitter(core.BaseSplitter):
     """Split line based on fixed start and end positions for each ``col`` in
     ``self.cols``.
@@ -140,4 +141,37 @@ class FixedWidthRst(FixedWidth):
          self.header.splitter.delimiter = ''
          self.data.splitter.delimiter = '-'
         
+
+
+# ########################################
+# ## class for reading spaced header
+# ########################################
+# class SpacedHeaderHeader(core.BaseHeader):
+#     """Header class for which the column definition line starts with a space.
+#     Commonly seen in e.g. R output"""
+#     def process_lines(self, lines):
+#         """Return lines that start with a space."""
+#         re_space = re.compile("^\s+\S+")
+#         for line in lines:
+#             match = re_space.match(line)
+#             if match:
+#                 print self.names()
+#                 yield "Sample" + line[match.end():]
+
+# class SpacedHeader(core.BaseReader):
+#     """Read a file where the column names are given in a line that begins
+#     with a space."""
+#     def __init__(self):
+#         core.BaseReader.__init__(self)
+#         self.header = SpacedHeaderHeader()
+#         self.header.data = self.data
+#         self.data.header = self.header
+#         self.header.splitter.delimiter = ' '
+#         self.data.splitter.delimiter = ' '
+#         self.header.start_line = 0
+#         self.data.start_line = 0
+#         self.data.comment = r'\s*#'
+#         self.data.write_comment = '# '
+
+# SpacedHeaderReader = SpacedHeader
 

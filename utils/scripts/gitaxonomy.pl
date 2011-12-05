@@ -11,7 +11,7 @@
 # Description:
 # 
 
-use lib '~/local/lib/perl5/';
+use lib '/bubo/home/h1/perun/local/lib/perl5/';
 use SciLifeLab_SeqClass;
 # use TaxonomyNCBI;
 use strict;
@@ -22,7 +22,7 @@ my $usage = "Usage: $0 gilist dbfile
 <dbfile>    BIN taxonomy database file
 ";
 
-if ($#ARGV != 0) {
+if ($#ARGV != 1) {
   die $usage;
 }
 my $gifile = shift @ARGV;
