@@ -1,11 +1,8 @@
 <%!
 import os
 import sys
-import glob
-import asciitable
-import scilife.report.gatk as gatk
 
 config = dict( 
-   results = ".",
+   results = "/datad/projects/a2010002/projects/e_hellstrom_11_01/flowcells/111017_AD072NACXX/",
 )
 %>
