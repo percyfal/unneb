@@ -32,24 +32,22 @@ my @gi = <IN>;
 chomp @gi;
 close(IN);
 my ($prefix) = $gifile =~ /^([0-9a-zA-Z]+)\..+/;
-
-# my $db=TaxonomyNCBI->new();
-my $dir = "/bubo/proj/a2010001/projects/B_Nicklasson_11_02/nobackup/";
-# $db->setDirDownload($dir);
-# $db->readTaxonomyNCBI();
-# "/bubo/proj/a2010001/projects/B_Nicklasson_11_02/nobackup/my_Taxonomy_20110914"
 my $db = SciLifeLab_SeqClass->readBINfile($dbbinfile);
 $db->reduceGIlist(@gi);
-my $resfile = $prefix.".taxa.txt";
-#$db->saveBINfile($resfile);
-$db->saveTXTfile($resfile);
+# my $resfile = $prefix.".taxa.txt";
+# $db->saveTXTfile($resfile);
 
-# $db->saveBINfile("gilist.txt");
+print "gi\ttaxon\tparent\tclass\tkingdom_abbrev\tkingdom\tspecies_name\tdesc\n";
 foreach my $gi ( @gi ) {
-        my $t = $db->getGI_TaxonID($gi);
-        my $n = $db->getTaxon_toString($t);
-        my $p = $db->getTaxon_Parent($t);
-        my $c = $db->getTaxon_ID4UpperRank($t,"class");
-	my $desc = $db->getGI_Desc($gi);
-        print "gi= $gi \ttaxon= $t \tname= $n \tparent= $p \tclass= $c\tdesc= $desc\n";
+        my $t = $db->getGI_TaxonID($gi) || "NA";
+        my $n = $db->getTaxon_toString($t) || "NA";
+        my $p = $db->getTaxon_Parent($t) || "NA";
+        my $c = $db->getTaxon_ID4UpperRank($t,"class") || "NA";
+	my $desc = $db->getGI_Desc($gi) || "NA";
+	my ($kingdom_abbrev, $kingdom, $species_name) = ($n) =~ /species\s+:\s+(\S+)\s+:\s+(\S+)\s+:\s+(.+)\s+:/;
+	$kingdom_abbrev = $kingdom_abbrev || "NA";
+	$gi = $gi || "NA";
+	$species_name = $species_name || "NA";
+	$kingdom = $kingdom || "NA";
+        print "$gi\t$t\t$p\t$c\t$kingdom_abbrev\t$kingdom\t$species_name\t$desc\n";
 }
