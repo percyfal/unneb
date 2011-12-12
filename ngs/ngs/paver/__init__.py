@@ -158,6 +158,27 @@ def run_cmd(cl, infile=None, outfile=None, run=True, msg=None):
         options.cl = []
 
 ##############################
+## xargs task
+## Wrap a task through xargs
+##############################
+@task
+@cmdopts([("glob=", "g", "glob of files to process"), ("task=", "t", "task to run"), ("proc=", "p", "number of processes to use")])
+def task_to_xargs():
+    options.order("task_to_xargs")
+    task = options.get("task", None)
+    # Collect tasks
+    options.run = False
+    if not task is None:
+        glob_str = options.get("glob")
+        infiles = glob.glob(glob_str)
+        for f in infiles:
+            
+            call.task(task)
+        print options.cl
+        
+
+
+##############################
 ## Simple getters
 ##############################        
 def current_prefix(ext=""):

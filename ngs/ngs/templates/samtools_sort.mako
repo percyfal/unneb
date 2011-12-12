@@ -27,6 +27,12 @@ samtools view -bSh $sam${i} > $bam${i} &
 % endfor
 wait
 
+## Remove sam files but keep file name for sanity check
+% for i in range(1,len(bams)+1):
+echo "$sam${i} converted to $bam${i}" > $sam${i}
+% endfor
+wait
+
 <%
 i=1
 bamsort_pfx = []
