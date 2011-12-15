@@ -3,16 +3,23 @@ import asciitable
 
 class ProgramData():
     """Container class for program data output"""
-    program =""
+    program = ""
+    #version = ""
+    #entries = []
 
     def __init__(self):
         self.data = dict()
-        self.version = ""
-
-    def to_rst_table(self):
+    
+    def as_rst(self, table):
         """Convert asciitable to rst table"""
         s = ".. table::"
 
+    def _pad_table(self, table, char=" ", width=4):
+        """Pad all lines in a table."""
+        if not self.data.exists(table):
+            raise "no such %s key in self" % table
+        else:
+            return [ char * width + self.data[x] for x in self.data[table] ]
 
     def _sniff_table(self,filename):
         """Read all lines in a table. If header starts with a space, add a description"""

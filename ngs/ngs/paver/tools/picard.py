@@ -15,7 +15,19 @@ options.picard_default = Bunch(
     picard_home  = os.path.abspath("./"),
     opts = "",
     javamem = "-Xmx6g",
+    validation_stringency="SILENT",
     )
+
+##############################
+## Picard run function
+##############################
+def run(options, fun, infile, outfile):
+    """Run picard."""
+    opts = ""
+    cl = [" ".join(["java -jar", options.get("javamem"), path(options.get("picard_home")) / fun, opts])]
+    run_cmd(cl, f1, output, options.get("run"), msg="Running %s" + fun)
+    
+
 
 ##############################
 ## picard basic wrapper
@@ -92,9 +104,31 @@ def MergeBamAlignment():
     else:
         print >> sys.stderr, "required argument unmapped_bam missing"
 
+
+@task
+@cmdopts([("INPUT=", "I", "input"), ("OUTPUT=", "O", "output"), ("METRICS=", "M", "metrics"),
+          ("VALIDATION_STRINGENCY=", "V", "validation stringency")])
+def MarkDuplicates():
+    """Mark duplicates.
+    
+    """
+    options.order("MarkDuplicates", "picard_default")
+    infile = options.get("INPUT", None)
+    prefix, ext = os.path.splitext(infile)
+    outfile = options.get("OUTPUT", prefix + "-dup" + ext)
+    metrics = options.get("METRICS", prefix + "-dup.metrics")
+    validation_stringency = options.get("VALIDATION_STRINGENCY", "SILENT")
+    opts = options.get("opts", "")
+    if not infile is None:
+        opts += " INPUT=%s OUTPUT=%s METRICS_FILE=%s VALIDATION_STRINGENCY=%s" % (infile, outfile, metrics, validation_stringency)
+        cl = [" ".join(["java -jar", options.get("javamem"), path(options.get("picard_home")) / "MarkDuplicates.jar", opts ])]
+        run_cmd(cl, infile, outfile, options.get("run"), msg="Running MarkDuplicates")
+    else:
+        print >> sys.stderr, "required argument missing"
+
 @task
 @cmdopts([("INPUT=", "I", "input"), ("OUTPUT=", "O", "output"),
-          ("SORT_ORDER=", "S", "sort order")])
+          ("SORT_ORDER=", "S", "sort order"), ("VALIDATION_STRINGENCY=", "V", "validation stringency")])
 def SortSam():
     """Sort sam/bam file"""
     options.order("SortSam", "picard_default")
@@ -102,30 +136,52 @@ def SortSam():
     prefix, ext = os.path.splitext(infile)
     outfile = options.get("OUTPUT", prefix + "-sort" + ext)
     sort_order = options.get("SORT_ORDER", "coordinate")
+    validation_stringency = options.get("VALIDATION_STRINGENCY", "SILENT")
     opts = options.get("opts", "")
     if not infile is None:
-        opts += " INPUT=%s OUTPUT=%s SORT_ORDER=%s" % (infile, outfile, sort_order)
+        opts += " INPUT=%s OUTPUT=%s SORT_ORDER=%s VALIDATION_STRINGENCY=%s" % (infile, outfile, sort_order, validation_stringency)
         cl = [" ".join(["java -jar", options.get("javamem"), path(options.get("picard_home")) / "SortSam.jar", opts ])]
         run_cmd(cl, infile, outfile, options.get("run"), msg="Running SortSam")
     else:
         print >> sys.stderr, "required argument missing"
 
 @task
-@cmdopts([("INPUT=", "I", "input")])
+@cmdopts([("INPUT=", "I", "input"), ("VALIDATION_STRINGENCY=", "V", "validation stringency")])
 def BuildBamIndex():
     """Build bam index"""
     options.order("BuildBamIndex", "picard_default")
     infile = os.path.abspath(options.get("INPUT", None))
     outfile = os.path.abspath(options.get("OUTPUT", infile.rstrip(".bam") + ".bai"))
+    validation_stringency = options.get("VALIDATION_STRINGENCY", "SILENT")
     opts = options.get("opts", "")
     if not infile is None:
-        opts += " INPUT=%s OUTPUT=%s" % (infile, outfile)
+        opts += " INPUT=%s OUTPUT=%s VALIDATION_STRINGENCY=%s" % (infile, outfile, validation_stringency)
         cl = [" ".join(["java -jar", options.get("javamem"), path(options.get("picard_home")) / "BuildBamIndex.jar", opts ])]
         run_cmd(cl, infile, outfile, options.get("run"), msg="Running BuildBamIndex")
     else:
         print >> sys.stderr, "required argument missing"
 
+
+
 @task
 def MergeSamFiles():
     pass
 
+@task
+@cmdopts([("INPUT=", "I", "input"), ("OUTPUT=", "O", "output"),
+          ("REFERENCE_SEQUENCE=", "R", "reference sequence")])
+def CollectAlignmentSummaryMetrics():
+    """Collect alignment summary metrics."""
+    options.order("CollectAlignmentSummaryMetrics", "picard_default")
+    infile = options.get("INPUT", None)
+    prefix, ext = os.path.splitext(infile)
+    outfile = options.get("OUTPUT", prefix + ".align_metrics")
+    ref = options.get("REFERENCE_SEQUENCE", options.index_loc.get(options.aligner).get(options.ref)[2])
+    opts = options.get("opts", "")
+    if not infile is None:
+        opts += " INPUT=%s OUTPUT=%s REFERENCE_SEQUENCE=%s" % (infile, outfile, ref)
+        cl = [" ".join(["java -jar", options.get("javamem"), path(options.get("picard_home")) / "CollectAlignmentSummaryMetrics.jar", opts])]
+        run_cmd(cl, infile, outfile, options.get("run"), msg="Running CollectAlignmentSummaryMetrics")
+    else:
+        print >> sys.stderr, "required argument infile missing"
+    
