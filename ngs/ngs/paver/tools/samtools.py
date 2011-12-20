@@ -37,6 +37,7 @@ options.samtools_default = Bunch(
 @task
 @cmdopts([()])
 def sam2bam():
+    """Run samtools view."""
     if options.prefix is None:
         return
     samfile = options.prefix + ".sam"
@@ -48,6 +49,7 @@ def sam2bam():
 @needs("sam2bam")
 @task
 def samsort():
+    """Run samtools sort."""
     if options.prefix is None:
         return
     bamfile = options.prefix + ".bam"
