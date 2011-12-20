@@ -23,6 +23,7 @@ from paver.easy import *
 ## Read from galaxy config
 ##############################
 ## Tuple with <unique_build_id>   <dbkey>   <display_name>   <file_path>
+
 index_loc = dict(
     bowtie = dict(
         phix = tuple(["phix","phix","/bubo/nobackup/uppnex/reference/biodata/genomes/phiX174/phix/bowtie/phix"]),

@@ -17,8 +17,8 @@ def main(bamfile, bedfile):
     abam = pybedtools.BedTool(bamfile)
     bed = pybedtools.BedTool(bedfile)
     on_target = abam.intersect(bed, stream=True).count()
-    mapped = abam.count()
-    print "Mapped reads:\t%s" % mapped
+    reads = abam.count()
+    print "Total reads:\t%s" % reads
     print "On target:\t%s" % on_target
     target_size = 0
     for feature in iter(bed):
@@ -34,7 +34,7 @@ def main(bamfile, bedfile):
         
     outfile = os.path.abspath(os.path.splitext(bamfile)[0] + ".enrichment_metrics")
     target_fraction = float(target_size) / float(genome_size)
-    on_target_fraction = float(on_target) / float(mapped)
+    on_target_fraction = float(on_target) / float(reads)
     fp = open(outfile, "w")
     fp.write("# Run date: %s\n" % strftime("%a, %d %b %Y %H:%M:%S", gmtime()))
     fp.write("# Command: %s\n" % " ".join(sys.argv))
