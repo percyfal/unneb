@@ -1,8 +1,10 @@
-<%page args="config"/>
 <%!
 import scilife.report.gatk as gatk
 import scilife.report.table as table
 import asciitable
+%>
+
+<%
 doc = gatk.DepthOfCoverage()
 doc.read_depthofcoverage("depthofcoverage_out", indir=config['results'])
 %>
