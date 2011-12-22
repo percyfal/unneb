@@ -105,46 +105,78 @@ def MergeBamAlignment():
         print >> sys.stderr, "required argument unmapped_bam missing"
 
 
-@task
-@cmdopts([("INPUT=", "I", "input"), ("OUTPUT=", "O", "output"), ("METRICS=", "M", "metrics"),
-          ("VALIDATION_STRINGENCY=", "V", "validation stringency")])
-def MarkDuplicates():
-    """Mark duplicates.
-    
-    """
-    options.order("MarkDuplicates", "picard_default")
-    infile = options.get("INPUT", None)
-    prefix, ext = os.path.splitext(infile)
-    outfile = options.get("OUTPUT", prefix + "-dup" + ext)
-    metrics = options.get("METRICS", prefix + "-dup.metrics")
-    validation_stringency = options.get("VALIDATION_STRINGENCY", "SILENT")
-    opts = options.get("opts", "")
-    if not infile is None:
-        opts += " INPUT=%s OUTPUT=%s METRICS_FILE=%s VALIDATION_STRINGENCY=%s" % (infile, outfile, metrics, validation_stringency)
-        cl = [" ".join(["java -jar", options.get("javamem"), path(options.get("picard_home")) / "MarkDuplicates.jar", opts ])]
-        run_cmd(cl, infile, outfile, options.get("run"), msg="Running MarkDuplicates")
-    else:
-        print >> sys.stderr, "required argument missing"
 
 @task
 @cmdopts([("INPUT=", "I", "input"), ("OUTPUT=", "O", "output"),
           ("SORT_ORDER=", "S", "sort order"), ("VALIDATION_STRINGENCY=", "V", "validation stringency")])
 def SortSam():
     """Sort sam/bam file"""
-    options.order("SortSam", "picard_default")
-    infile = options.get("INPUT", None)
+    options.order("SortSam")
+    default = options.picard_default
+    infile = options.SortSam.get("INPUT", options.get("current_file", None))
+    if infile is None:
+        print >> sys.stderr, "required argument missing"
+        return
     prefix, ext = os.path.splitext(infile)
     outfile = options.get("OUTPUT", prefix + "-sort" + ext)
+    options.current_file = outfile
     sort_order = options.get("SORT_ORDER", "coordinate")
     validation_stringency = options.get("VALIDATION_STRINGENCY", "SILENT")
     opts = options.get("opts", "")
-    if not infile is None:
-        opts += " INPUT=%s OUTPUT=%s SORT_ORDER=%s VALIDATION_STRINGENCY=%s" % (infile, outfile, sort_order, validation_stringency)
-        cl = [" ".join(["java -jar", options.get("javamem"), path(options.get("picard_home")) / "SortSam.jar", opts ])]
-        run_cmd(cl, infile, outfile, options.get("run"), msg="Running SortSam")
-    else:
-        print >> sys.stderr, "required argument missing"
+    opts += " INPUT=%s OUTPUT=%s SORT_ORDER=%s VALIDATION_STRINGENCY=%s" % (infile, outfile, sort_order, validation_stringency)
+    cl = [" ".join(["java -jar", options.get("javamem", default.get("javamem")), path(options.get("picard_home", default.get("picard_home"))) / "SortSam.jar", opts ])]
+    run_cmd(cl, infile, outfile, options.get("run"), msg="Running SortSam")
 
+
+@task
+@cmdopts([("INPUT=", "I", "input"), ("OUTPUT=", "O", "output"), ("METRICS=", "M", "metrics"),
+          ("VALIDATION_STRINGENCY=", "V", "validation stringency"), ("REMOVE_DUPLICATES", "R", "remove duplicates")])
+def MarkDuplicates():
+    """Mark duplicates.
+    
+    """
+    options.order("MarkDuplicates")
+    default = options.picard_default
+    infile = options.MarkDuplicates.get("INPUT", options.get("current_file", None))
+    if infile is None:
+        print >> sys.stderr, "required argument missing"
+        return
+    prefix, ext = os.path.splitext(infile)
+    outfile = options.get("OUTPUT", prefix + "-dup" + ext)
+    options.current_file = outfile
+    metrics = options.get("METRICS", prefix + "-dup.metrics")
+    validation_stringency = options.get("VALIDATION_STRINGENCY", "SILENT")
+    remove_duplicates = options.get("REMOVE_DUPLICATES", True)
+    opts = options.get("opts", "")
+    opts += " INPUT=%s OUTPUT=%s METRICS_FILE=%s VALIDATION_STRINGENCY=%s REMOVE_DUPLICATES=%s" % (infile, outfile, metrics, validation_stringency, remove_duplicates)
+    cl = [" ".join(["java -jar", options.get("javamem", default.get("javamem")), path(options.get("picard_home", default.get("picard_home"))) / "MarkDuplicates.jar", opts ])]
+    run_cmd(cl, infile, outfile, options.get("run"), msg="Running MarkDuplicates")
+
+@task
+@cmdopts([("INPUT=", "I", "input"), ("OUTPUT=", "O", "output"), ("RGLB=", "L", "read group library"),
+          ("RGPL=", "P", "read group platform"), ("RGPU=", "U", "read group platform unit"),
+          ("RGSM=", "S", "read group sample")])
+def AddOrReplaceReadGroups():
+    """Add or replace read groups.
+    
+    """
+    options.order("AddOrReplaceReadGroups")
+    default = options.picard_default
+    infile = options.AddOrReplaceReadGroups.get("INPUT", options.get("current_file", None))
+    if infile is None:
+        print >> sys.stderr, "required argument missing"
+        return
+    prefix, ext = os.path.splitext(infile)
+    outfile = options.get("OUTPUT", prefix + "-dup" + ext)
+    options.current_file = outfile
+    metrics = options.get("METRICS", prefix + "-dup.metrics")
+    validation_stringency = options.get("VALIDATION_STRINGENCY", "SILENT")
+    remove_duplicates = options.get("REMOVE_DUPLICATES", True)
+    opts = options.get("opts", "")
+    opts += " INPUT=%s OUTPUT=%s METRICS_FILE=%s VALIDATION_STRINGENCY=%s REMOVE_DUPLICATES=%s" % (infile, outfile, metrics, validation_stringency, remove_duplicates)
+    cl = [" ".join(["java -jar", options.get("javamem", default.get("javamem")), path(options.get("picard_home", default.get("picard_home"))) / "MarkDuplicates.jar", opts ])]
+    run_cmd(cl, infile, outfile, options.get("run"), msg="Running MarkDuplicates")
+    
 @task
 @cmdopts([("INPUT=", "I", "input"), ("VALIDATION_STRINGENCY=", "V", "validation stringency")])
 def BuildBamIndex():

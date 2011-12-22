@@ -15,8 +15,9 @@ def get_bcbb_config(config_file=BCBB_CONFIG):
         bcbb_config = yaml.load(bc)
     return bcbb_config
 
-#TOOL_DATA = "/bubo/nobackup/uppnex/reference/biodata/galaxy/tool-data/"
-TOOL_DATA = "/datad/biodata/galaxy/tool-data/"
+# Use os.getenv("TOOL_DATA")
+TOOL_DATA = "/bubo/nobackup/uppnex/reference/biodata/galaxy/tool-data/"
+#TOOL_DATA = "/datad/biodata/galaxy/tool-data/"
 _tool_data = dict(bwa = os.path.join(TOOL_DATA, "bwa_index.loc"),
                   bowtie = os.path.join(TOOL_DATA, "bowtie_indices.loc"),
                   samtools = os.path.join(TOOL_DATA, "sam_fa_indices.loc"))

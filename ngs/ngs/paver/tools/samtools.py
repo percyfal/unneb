@@ -11,21 +11,23 @@ from ngs.paver import run_cmd
 options.samtools_default = Bunch(
     program = "samtools",
     opts = "",
-    view = dict(
+    view = Bunch(
         opts = "-bS",
         ext_out = None,
         ),
-    sam2bam = dict(
-        opts = "-b",
+    sam2bam = Bunch(
+        opts = "-bSh",
         ext_out = ".bam",
-        #cl = sam2bam,
         ),
-    samsort = dict(
+    bam2bam = Bunch(
+        opts = "-bh",
+        ext_out = ".bam",
+        ),
+    samsort = Bunch(
         opts = "",
         ext_out = ".sort.bam",
-        #cl = samsort,
         ),
-    mpileup = dict(
+    mpileup = Bunch(
         opts = "-us",
         ext_out = "",
         )
@@ -35,28 +37,70 @@ options.samtools_default = Bunch(
 ## Tasks
 ##############################
 @task
-@cmdopts([()])
+@cmdopts([("INPUT=", "I", "input sam file")])
 def sam2bam():
     """Run samtools view."""
-    if options.prefix is None:
+    options.order("sam2bam")
+    default = options.samtools_default
+    samfile = options.get("INPUT", options.get("prefix", None))
+    if samfile is None:
         return
-    samfile = options.prefix + ".sam"
-    out = options.prefix + samtools["sam2bam"]["ext_out"]
-    samtools["cl"].append(" ".join([samtools["program"], "view", 
-                                   samtools["sam2bam"]["opts"], samfile, ">", out]))
-    sh(samtools["cl"])
+    opts = options.get("opts", default.sam2bam.get("opts"))
+    outfile = samfile.replace(".sam", ".bam")
+    cl = [" ".join(["samtools view", opts, samfile, ">", outfile])]
+    run_cmd(cl, samfile, outfile, options.run, "Running %s" % cl)
 
-@needs("sam2bam")
 @task
+@cmdopts([("INPUT=", "I", "input bam file")])
+def bam2bam():
+    """Run samtools view on bam file."""
+    options.order("bam2bam")
+    default = options.samtools_default
+    bamfile = options.get("INPUT", options.get("prefix", None))
+    if bamfile is None:
+        return
+    opts = options.get("opts", default.bam2bam.get("opts"))
+    ext_out = options.get("ext_out", "test")
+    outfile = bamfile.replace(".bam", ext_out)
+    cl = [" ".join(["samtools view", opts, bamfile, ">", outfile])]
+    run_cmd(cl, bamfile, outfile, options.run, "Running %s" % cl)
+
+@task
+@cmdopts([("INPUT=", "I", "input sam file")])
+def compress_sam():
+    """Replace sam file content with text string.
+
+    If bam file exists, replace sam file content with a text string pointing to bam file.
+
+    NOTE: use at own risk! Does not check whether bam file is correct.
+    """
+    options.order("compress_sam")
+    samfile = options.get("INPUT", options.get("prefix", None))
+    if samfile is None:
+        return
+    bamfile = samfile.replace(".sam", ".bam")
+    if os.path.exists(bamfile):
+        if not options.dry_run:
+            out_handle = open(samfile, "w")
+            out_handle.write("%s converted to %s\n" % (samfile, bamfile))
+            out_handle.close()
+        else:
+            print "%s converted to %s" % (samfile, bamfile)
+
+@task
+@cmdopts([("INPUT=", "I", "input sam file")])
 def samsort():
     """Run samtools sort."""
-    if options.prefix is None:
+    options.order("samsort")
+    default = options.samtools_default
+    infile = options.get("INPUT", options.get("prefix", None))
+    if infile is None:
         return
-    bamfile = options.prefix + ".bam"
-    out = options.prefix + samtools["samsort"]["ext_out"]
-    samtools["cl"].append(" ".join([samtools["program"], "sort", 
-                                   bamfile, out]))
-    sh(samtools["cl"])
+    prefix, ext = os.path.splitext(infile)
+    opts = options.get("opts", default.samsort.get("opts"))
+    outfile = infile.replace(ext, "-sort")
+    cl = [" ".join(["samtools sort", opts, infile, prefix + "-sort"])]
+    run_cmd(cl, infile, None, options.run, "Running %s" % cl)
 
 @task
 @cmdopts([("INPUT=", "I", "input file"), ("outfile=", "o", "outfile"),
@@ -73,11 +117,11 @@ def mpileup():
     reference
       reference sequence
     """
-    options.order(options.get("samtools_default")["mpileup"], "samtools_default", add_rest=True)
+    options.order("mpileup")
     INPUT = os.path.abspath(options.get("INPUT", None))
     ref = options.get("reference", options.index_loc["sam_fa"][options.ref][2])
     opts = options.get("opts", "")
     if not INPUT is None:
         outfile = options.get("outfile", os.path.abspath(os.path.splitext(INPUT)[0] + ".mpileup"))
-        cl = [" ".join([options.get("program"), "mpileup", str(opts), "-f", ref, INPUT, ">", outfile])]
+        cl = [" ".join(["samtools mpileup", str(opts), "-f", ref, INPUT, ">", outfile])]
         run_cmd(cl, INPUT, outfile, options.run, "running samtools mpileup")

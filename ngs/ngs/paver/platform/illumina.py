@@ -10,6 +10,8 @@ from ngs.paver import run_cmd
 def organize_illumina_input(ext="_fastq.txt"):
     """Simple grouping of illumina read files.
 
+    Returns: tuple (prefix, fastq1, fastq2)
+
     NOTE: currently assumes paired end reads.
     """
     bcdirs = glob.glob(os.path.join(options.dirs.data, "*", "*_barcode"))
