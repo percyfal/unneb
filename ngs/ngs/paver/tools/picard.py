@@ -204,15 +204,17 @@ def MergeSamFiles():
           ("REFERENCE_SEQUENCE=", "R", "reference sequence")])
 def CollectAlignmentSummaryMetrics():
     """Collect alignment summary metrics."""
-    options.order("CollectAlignmentSummaryMetrics", "picard_default")
+    options.order("CollectAlignmentSummaryMetrics")
+    default = options.picard_default
     infile = options.get("INPUT", None)
-    prefix, ext = os.path.splitext(infile)
-    outfile = options.get("OUTPUT", prefix + ".align_metrics")
-    ref = options.get("REFERENCE_SEQUENCE", options.index_loc.get(options.aligner).get(options.ref)[2])
-    opts = options.get("opts", "")
+    validation_stringency = options.get("VALIDATION_STRINGENCY", "SILENT")
     if not infile is None:
-        opts += " INPUT=%s OUTPUT=%s REFERENCE_SEQUENCE=%s" % (infile, outfile, ref)
-        cl = [" ".join(["java -jar", options.get("javamem"), path(options.get("picard_home")) / "CollectAlignmentSummaryMetrics.jar", opts])]
+        prefix, ext = os.path.splitext(infile)
+        outfile = options.get("OUTPUT", prefix + ".align_metrics")
+        ref = options.get("REFERENCE_SEQUENCE", options.index_loc["sam_fa"][options.ref][2])
+        opts = options.get("opts", "")
+        opts += " INPUT=%s OUTPUT=%s REFERENCE_SEQUENCE=%s VALIDATION_STRINGENCY=%s" % (infile, outfile, ref, validation_stringency)
+        cl = [" ".join(["java -jar", options.get("javamem", default.get("javamem")), path(options.get("picard_home", default.get("picard_home"))) / "CollectAlignmentSummaryMetrics.jar", opts])]
         run_cmd(cl, infile, outfile, options.get("run"), msg="Running CollectAlignmentSummaryMetrics")
     else:
         print >> sys.stderr, "required argument infile missing"
