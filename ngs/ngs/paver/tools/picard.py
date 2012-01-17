@@ -26,8 +26,6 @@ def run(options, fun, infile, outfile):
     opts = ""
     cl = [" ".join(["java -jar", options.get("javamem"), path(options.get("picard_home")) / fun, opts])]
     run_cmd(cl, f1, output, options.get("run"), msg="Running %s" + fun)
-    
-
 
 ##############################
 ## picard basic wrapper

@@ -100,18 +100,16 @@ def pigz(options):
     """
     options.order('pigz')
     basedir = path(os.path.abspath(options.get('basedir', path(os.path.curdir))))
+    glob_str = basedir / options.get("glob", "")
+    files = glob.glob(glob_str)
     opts = options.get('opts', "-v")
     decompress = options.get('decompress', False)
-    pattern = options.get('glob', None)
     if decompress:
         opts = opts + "d"
-    if not pattern is None:
-        files = basedir.walkfiles(pattern)
-        cl = [" ".join(['pigz', opts, pattern])]
-        if files:
-            run_cmd(cl, files.next(), None, options.run, "Running pigz")
-
-
+    for f in files:
+        if not os.path.islink(f):
+            cl = [" ".join(['pigz', opts, f])]
+            run_cmd(cl, f, None, options.run, "Running pigz on %s" % f)
 
 @task
 @cmdopts([('archive=', 'a', 'archive for tar'), ('glob=', 'g', 'glob for tar'), ('opts=', 'o', 'options')])
