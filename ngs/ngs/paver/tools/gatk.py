@@ -86,6 +86,6 @@ def DepthOfCoverage():
     opts = options.get("opts", "")
     gatk_home = options.get("gatk_home")
     cl = [" ".join(["java -jar", javamem, path(gatk_home) / "GenomeAnalysisTK.jar", "-T", "DepthOfCoverage", "-I", str(input_list), "-o", str(output), "-R", options.get("REF"), "-L", options.get("TARGET"), str(opts)])]
-    if os.path.exists("bamfiles.list"):
+    if os.path.exists(input_list):
         run_cmd(cl, None, None, options.run, "Running DepthOfCoverage")
     

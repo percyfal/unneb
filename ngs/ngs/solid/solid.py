@@ -238,7 +238,7 @@ class ReseqFrag(SOLiDProject):
         if saet:
             self.d.update({'saet_fixdir' : "$${output.dir}/fixed"})
         else:
-            self.d.update({'saet_fixdir' : $self.primersets['F3'].dirs['reads']})
+            self.d.update({'saet_fixdir' : self.primersets['F3'].dirs['reads']})
         analysis_plan = os.path.join(self.basedirs['base'], 'analysis.plan')
         ap = []
         self.global_ini()

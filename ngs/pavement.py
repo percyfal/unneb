@@ -4,7 +4,7 @@ import paver.doctools
 
 setup(
     name="unneb-ngs",
-    version="0.2",
+    version="0.2.1",
     description = "", 
     author="Per Unneberg",
     url="https://github.com/percyfal/unneb",
