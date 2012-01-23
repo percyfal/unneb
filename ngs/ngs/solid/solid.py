@@ -276,7 +276,7 @@ class Primer(object):
                   # As of yet I have no idea what this looks like
                   # 'small_indel_frag_qual' : self.project
                   }
-        print "Set the read files: " + str(self.d)
+        #print "Set the read files: " + str(self.d)
         
     def saet_ini(self, write=True):
         tmpl = self.ini_file('saet.ini')

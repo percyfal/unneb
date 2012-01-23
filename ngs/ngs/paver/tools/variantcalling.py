@@ -71,7 +71,7 @@ def annovar_convert_to_annovar():
           ("COVERAGE_FILE=", "C", "coverage output file name")])
 def muTect_paired():
     """Run muTect for paired normal/tumour sample."""
-    options.order("muTect")
+    options.order("muTect_paired")
     default = options.mutect_default
     normal = options.get("INPUT", None)
     tumour = options.get("INPUT2", None)
@@ -88,5 +88,5 @@ def muTect_paired():
             opts += " -B:dbsnp,VCF %s" % dbsnp
         if cosmic:
             opts += " -B:cosmic,VCF %s" % cosmic
-        cl = [" ".join(["java -jar", options.get("javamem", default.get("javamem")),  path(options.get("mutect_home", default.get("mutect_home"))) / "muTect.jar", opts])]
+        cl = [" ".join(["java -jar", options.get("javamem", default.get("javamem")),  path(options.get("mutect_home", default.get("mutect_home"))) / "muTect.jar", "--analysis_type MuTect", "--out %s" % OUTPUT, "--coverage_file %s" % coverage, "--log_to_file muTect_paired.log", opts])]
         run_cmd(cl, normal, OUTPUT, options.get("run"), msg="Running muTect_paired")
