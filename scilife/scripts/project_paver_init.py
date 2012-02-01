@@ -19,36 +19,6 @@ TERM_ENCODING = getattr(sys.stdin, 'encoding', None)
 
 PROMPT_PREFIX = '> '
 
-SBATCH_TEMPLATE = '''\
-#!/bin/bash -l
-TMPDIR=/scratch/$SLURM_JOB_ID
-
-#SBATCH -A ${project_id}
-#SBATCH -t ${time}
-#SBATCH -o ${jobname}.stdout
-#SBATCH -e ${jobname}.stderr
-#SBATCH -J ${jobname}
-#SBATCH -D ${workdir}
-#SBATCH -p ${partition}
-#SBATCH -n ${cores}
-#SBATCH --mail-type=${mail_type}
-#SBATCH --mail-user=${mail_user}
-<%
-if (constraint):
-    constraint_str = "#SBATCH -C " + constraint
-else:
-    constraint_str = ""
-%>
-${constraint_str}
-module load biopython
-module load bioinfo-tools
-module unload R
-module load R/2.13.0
-${header}
-${command_str}
-${footer}
-'''
-
 PAVEMENT_FILE = Template('''\
 """
 ${project} pavement file
@@ -75,15 +45,16 @@ import ngs.paver
 
 from scilife.config import get_bcbb_config, get_genome_ref
 from scilife.templates import TEMPLATE_DIR, SBATCH_HEADER_TEMPLATE
+from scilife.paver.uppmax import project_analysis_pipeline
 
 options(
     dirs = Bunch(
-        top = path("${top_dir}"),
+        project = path("${project_dir}"),
         sbatch = path("${sbatch_dir}"),
         log = path("${log_dir}"),
         git = path("${git_dir}"),
         intermediate = path("${intermediate_dir}"),
-        data = path("${top_dir}") / "data",
+        data = path("${project_dir}") / "data",
         ),
     sbatch = Bunch(
         project_id = "${uppmax_project_id}",
@@ -99,9 +70,6 @@ options(
         footer = '',
         command_str = '',
         ),
-    mako = Bunch(
-        sbatch = Template(filename = "sbatch_template.mako"),
-        ),
     sphinx = Bunch(
         docroot = path("${sphinx_dir}"),
         ),
@@ -110,7 +78,9 @@ options(
         ),
     refgenefile = "/bubo/home/h1/perun/glob/biodata/genomes/Hsapiens/hg19/annotation/refGene.txt",
     ref = "hg19",
+    wrapper = "sbatch",
     )
+    
 options.log = Bunch(dir = path(options.dirs.log))
 
 # Find flowcell ids
@@ -204,17 +174,18 @@ The project name is usually of the form j_doe_00_00, but can be any name. This n
     print '''
 The top path defines the root of the project. Relative to this path there should be a data directory with raw data, an intermediate directory with intermediate data analyses. pavement_init.py will set up a directory for the pavement.py file, an sbatch directory for sbatch files, and a log directory for logging.
 '''
-    do_prompt(d, 'top_dir', 'top path for the project', '.', is_path)
-    d['top_dir'] = path.abspath(d['top_dir'])
-    d['git_dir'] = path.join(d['top_dir'], d['project'] + '_git')
+    do_prompt(d, 'project_dir', 'project path for the project', '.', is_path)
+    d['project_dir'] = path.abspath(d['project_dir'])
+    d['cur_dir'] = path.abspath(os.getcwd())
+    d['git_dir'] = path.join(d['cur_dir'], d['project'] + '_git')
     while path.isfile(path.join(d['git_dir'], 'pavement.py')):
         print
         print colored('Error: an existing pavement.py has been found in the selected project top directory path.', attrs=["bold"])
         print 'will not overwrite existing pavement.py files.'
         print
-        do_prompt(d, 'top_dir', 'Please enter a new top path (or just Enter '
+        do_prompt(d, 'project_dir', 'Please enter a new top path (or just Enter '
                   'to exit)', '', is_path)
-        if not d['top_dir']:
+        if not d['project_dir']:
             sys.exit(1)
 
     do_prompt(d, 'uppmax_project_id', 'which uppmax project id is this project related to? used in the template sbatch file')
@@ -222,10 +193,11 @@ The top path defines the root of the project. Relative to this path there should
 
     ## Set remaining dictionary variables
     d['now'] = time.asctime()
-    d['sbatch_dir'] = path.join(d['top_dir'], 'sbatch')
-    d['log_dir'] = path.join(d['top_dir'], 'log')
+    d['sbatch_dir'] = path.join(d['cur_dir'], 'sbatch')
+    d['log_dir'] = path.join(d['cur_dir'], 'log')
     d['sphinx_dir'] = path.join(d['git_dir'], 'doc')
-    d['intermediate_dir'] = path.join(d['top_dir'], "intermediate", "nobackup")
+    d['intermediate_dir'] = path.join(d['project_dir'], "nobackup", "data")
+    d['data_dir'] = path.join(d['project_dir'], "nobackup", "data")
 
     mkdir_p(d['git_dir'])
     mkdir_p(d['sbatch_dir'])
