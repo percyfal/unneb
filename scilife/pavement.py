@@ -4,7 +4,7 @@ import paver.doctools
 
 setup(
     name="scilife-ngs",
-    version="0.1",
+    version="0.1.1",
     description = "", 
     author="Per Unneberg",
     url="https://github.com/percyfal/unneb",
@@ -16,7 +16,7 @@ setup(
         "asciitable",
         ],
     test_suite = 'nose.collector',
-    scripts = []
+    scripts = ['scripts/project_paver_init.py']
 )
 
 @task
