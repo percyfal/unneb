@@ -11,6 +11,7 @@ from ngs.paver import run_cmd
 ##############################
 options.variantcalling_default = Bunch(
     annovar_home = os.path.abspath("./"),
+    crispr_home = os.path.abspath("./"),
     )
 options.mutect_default = Bunch(
     mutect_home = os.path.abspath("./"),
@@ -18,6 +19,7 @@ options.mutect_default = Bunch(
     javamem = "-Xmx2g",
     validation_strictness = "SILENT",
     )
+
 
 ##############################
 ## Tasks
@@ -62,10 +64,13 @@ def annovar_convert_to_annovar():
     opts = options.get("opts", "")
     if not query is None:
         outfile = options.get("OUTPUT", query + ".avinput")
-        cl = [" ".join([path(options.get("annovar_home"))/ "convert2annovar.pl", opts, "--format %s --outfile %s" % (fformat, outfile), query])]
+        cl = [" ".join([path(options.get("annovar_home"))/ "convert2annovar.pl", opts, "--format %s %s | sed -e \"s/^[ \t]*//g\" > %s" % (fformat, query, outfile)])]
         run_cmd(cl, query, None, options.get("run"), msg="Running convert2annovar.pl")
-        
 
+
+##############################
+## muTect
+##############################        
 @task
 @cmdopts([("INPUT=", "I", "input normal sample"), ("INPUT2=", "T", "input tumour sample"), ("OUTPUT=", "O", "output file name"),
           ("COVERAGE_FILE=", "C", "coverage output file name")])
@@ -90,3 +95,22 @@ def muTect_paired():
             opts += " -B:cosmic,VCF %s" % cosmic
         cl = [" ".join(["java -jar", options.get("javamem", default.get("javamem")),  path(options.get("mutect_home", default.get("mutect_home"))) / "muTect.jar", "--analysis_type MuTect", "--out %s" % OUTPUT, "--coverage_file %s" % coverage, "--log_to_file muTect_paired.log", opts])]
         run_cmd(cl, normal, OUTPUT, options.get("run"), msg="Running muTect_paired")
+
+
+##############################
+## CRISP
+##############################
+@task
+@cmdopts([("INPUT=", "I", "input crisp results file")])
+def crisp_to_vcf():
+    """Convert crisp to vcf"""
+    options.order("crisp_to_vcf")
+    default = options.variantcalling_default
+    infile = options.get("INPUT", None)
+    if not infile is None:
+        outfile = infile + ".vcf"
+        opts = options.get("opts", "")
+        cl = [" ".join(["%s" % path(options.get("crispr_home"))/ "crisp_to_vcf.py", infile, ">", outfile])]
+        run_cmd(cl, infile, outfile, options.get("run"), msg="Running crisp_to_vcf")
+
+        
