@@ -45,7 +45,7 @@ import ngs.paver
 
 from scilife.config import get_bcbb_config, get_genome_ref
 from scilife.templates import TEMPLATE_DIR, SBATCH_HEADER_TEMPLATE
-from scilife.paver.uppmax import project_analysis_pipeline
+from scilife.paver.uppmax import automated_initial_analysis
 
 options(
     dirs = Bunch(
