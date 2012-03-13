@@ -2,12 +2,14 @@
 """Collect QC metrics from /proj/a2010002/projects
 
 Usage:
-  collect_QC_metrics.py [--dry_run --verbose]
+  collect_QC_metrics.py qc_dir project_dir [--dry_run --verbose]
 
-Simple script for collecting QC metrics and syncing
-files /proj/a2010002/projects/data/QC. Currently file
-globs are hardcoded, which means the following files
-will be targeted:
+qc_dir is where QC metrics are stored, project dir the directory where
+project analyses are stored.
+
+Simple script for collecting QC metrics and syncing files. Currently
+file globs are hardcoded, which means the following files will be
+targeted:
 
   - *.align_metrics
   - *.hs_metrics
@@ -31,8 +33,6 @@ import shutil
 import fnmatch
 import pickle
 
-QC_DIR="/proj/a2010002/projects/data/QC"
-PROJECT_DIR="/proj/a2010002/projects"
 
 # Uninteresting directories - edit at will
 FILTER=['mpileup_test', 'agilent_kinome', 'delivery_reports', 'patriks',
@@ -53,7 +53,7 @@ mtypes = dict(align_metrics = "align_metrics",
               hs_metrics = "hs_metrics"
               )
 
-def main():
+def main(QC_DIR, PROJECT_DIR):
     # Make a dictionary of project names
     glob_str = os.path.join(PROJECT_DIR, "*")
     dirlist = [x for x in glob.glob(glob_str)]
@@ -229,7 +229,7 @@ def _filter_fun(name):
 
 if __name__ == "__main__":
     usage = """
-      collect_QC_metrics.py [--dry_run --verbose]
+      collect_QC_metrics.py qc_dir project_dir [--dry_run --verbose]
       """
     parser = OptionParser(usage=usage)
     parser.add_option("-i", "--init-db", dest="init_db", action="store_true",
@@ -240,8 +240,9 @@ if __name__ == "__main__":
                       default=False)
     parser.add_option("-n", "--dry_run", dest="dry_run", action="store_true",
                       default=False)
+    
     (options, args) = parser.parse_args()
-    if len(args) != 0:
+    if len(args) != 2:
         print __doc__
         sys.exit()
     

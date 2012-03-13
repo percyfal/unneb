@@ -48,6 +48,7 @@ from scilife.templates import TEMPLATE_DIR, SBATCH_HEADER_TEMPLATE
 from scilife.paver.uppmax import automated_initial_analysis
 
 options(
+    project_name = ${project_dir},
     dirs = Bunch(
         project = path("${project_dir}"),
         sbatch = path("${sbatch_dir}"),
