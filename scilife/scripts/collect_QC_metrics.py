@@ -38,7 +38,7 @@ import pickle
 FILTER=['mpileup_test', 'agilent_kinome', 'delivery_reports', 'patriks',
         'test', 'a_lindblom_11_01.old','data', 'single_lane_deliveries',
         'Sample_1168', 'fastq_screen', 'software',  '101122_SN139_0199_B80HM7ABXX',
-        'pelins_barcode', 'truecrypt']
+        'pelins_barcode', 'truecrypt','m_magnusson_11_01']
 
 # Database of transferred files
 DBFILE=".QCmetricsdb"
@@ -47,22 +47,24 @@ JSONDBFILE=".QCmetrics.json"
 # Dictionary of extension types
 mtypes = dict(align_metrics = "align_metrics",
               dup_metrics = "dup_metrics",
+              dups_metrics = "dup_metrics",
               insert_metrics = "insert_metrics",
               eval_metrics = "eval_metrics",
               gc_metrics = "gc_metrics",
               hs_metrics = "hs_metrics"
               )
 
-def main(QC_DIR, PROJECT_DIR):
+
+def main(qc_dir, project_dir):
     # Make a dictionary of project names
-    glob_str = os.path.join(PROJECT_DIR, "*")
+    glob_str = os.path.join(project_dir, "*")
     dirlist = [x for x in glob.glob(glob_str)]
     projects = [os.path.basename(x) for x in filter(_filter_fun, dirlist)]
 
     # Read database file if it exists
     qc = dict()
-    if os.path.exists(os.path.join(QC_DIR, DBFILE)):
-        fp = open(os.path.join(QC_DIR, DBFILE), "r")
+    if os.path.exists(os.path.join(qc_dir, DBFILE)):
+        fp = open(os.path.join(qc_dir, DBFILE), "r")
         qc = pickle.load(fp)
         fp.close()
 
@@ -73,7 +75,7 @@ def main(QC_DIR, PROJECT_DIR):
     #         newfiles.append( _classify_file(x[0]))
     #     qc[p]["FILES"] = newfiles
 
-    # fp = open(os.path.join(QC_DIR, DBFILE), "w")
+    # fp = open(os.path.join(qc_dir, DBFILE), "w")
     # pickle.dump(qc, fp)
     # fp.close()
     #print qc
@@ -81,7 +83,7 @@ def main(QC_DIR, PROJECT_DIR):
     # Loop projects for metrics files of interest
     metrics = dict()
     for p in projects:
-        indir = os.path.join(PROJECT_DIR, p)
+        indir = os.path.join(project_dir, p)
         metrics[p] = dict()
         metrics[p]["PRJ_MODIFICATION_TIME"] = os.path.getmtime(indir)
         if qc.has_key(p) and not options.init_db:
@@ -90,7 +92,7 @@ def main(QC_DIR, PROJECT_DIR):
                 if options.verbose:
                     print "Scanning project %s" % p
                     files = _get_metrics(indir)
-                    metrics[p]["FILES"] = [_classify_file(x,p) for x in files]
+                    metrics[p]["FILES"] = [_classify_file(x,p,qc_dir) for x in files]
                     qc[p].update(metrics[p])
             else:
                 print >> sys.stderr, "Project %s not modified: not doing anything" % p
@@ -99,16 +101,17 @@ def main(QC_DIR, PROJECT_DIR):
             files = _get_metrics(indir)
             if options.verbose:
                 print >> sys.stderr, "Added metrics files %s" % (",".join(files))
-            metrics[p]["FILES"] = [_classify_file(x, p) for x in files]
+            metrics[p]["FILES"] = [_classify_file(x, p,qc_dir) for x in files]
             qc[p] = metrics[p]
 
     # Save database file
-    fp = open(os.path.join(QC_DIR, DBFILE), "w")
-    pickle.dump(qc, fp)
-    fp.close()
-    fp = open(os.path.join(QC_DIR, JSONDBFILE), "w")
-    json.dump(qc, fp)
-    fp.close()
+    if not options.dry_run:
+        fp = open(os.path.join(qc_dir, DBFILE), "w")
+        pickle.dump(qc, fp)
+        fp.close()
+        fp = open(os.path.join(qc_dir, JSONDBFILE), "w")
+        json.dump(qc, fp)
+        fp.close()
 
     # Traverse all projects, adding the metrics files to the file tree looking like:
     # QC/project/flowcellid/*.metrics
@@ -120,20 +123,20 @@ def main(QC_DIR, PROJECT_DIR):
     if options.init_db:
         metrics = qc
     for p in metrics.keys():
-        _safe_make_dir(os.path.join(QC_DIR, p))
+        _safe_make_dir(os.path.join(qc_dir, p))
         try:
             qcfiles = metrics[p]["FILES"]
             for d in qcfiles:
-                _copy_file(d['file'], p, d['date'], d['flowcellid'])
+                _copy_file(d['file'], p, d['date'], d['flowcellid'], qc_dir)
         except:
             pass
 
         
-def _copy_file(f, p, date, flowcellid):
+def _copy_file(f, p, date, flowcellid, qc_dir):
     label = ""
     if not date is None and not flowcellid is None:
         label = "%s_%s" % (date, flowcellid)
-    outdir = os.path.join(QC_DIR, p, label)
+    outdir = os.path.join(qc_dir, p, label)
     _safe_make_dir(outdir)
     src = f
     tgt = os.path.join(outdir, os.path.basename(f))
@@ -149,8 +152,10 @@ def _copy_file(f, p, date, flowcellid):
             print >> sys.stderr, "WARNING: %s already exists; not overwriting" % tgt
     
 
-def _classify_file(f, p):
+def _classify_file(f, p, qc_dir):
     (prefix, ext) = os.path.splitext(f)
+    if ext == ".metrics":
+        ext = "." + prefix.split("-")[-1] + "_metrics"
     mtype = None
     method = "bcbb"
     lane = None
@@ -172,6 +177,7 @@ def _classify_file(f, p):
             sample = os.path.basename(f).rstrip("picardDup_metrics")
         except:
             print >> sys.sterr, "WARNING: unknown filetype %s" % f
+
     fcre = r'^(\d+)_(\d{6})_([0-9A-Z]+)_?(\d+)?'
     fcre_with_sample = r'^(\d+)_([0-9A-Za-z]+)_(\d{6})_([0-9A-Z]+)'
     m = re.match(fcre, os.path.basename(f))
@@ -200,7 +206,7 @@ def _classify_file(f, p):
     label = ""
     if not date is None and not flowcellid is None:
         label = "%s_%s" % (date, flowcellid)
-    outdir = os.path.join(QC_DIR, p, label)
+    outdir = os.path.join(qc_dir, p, label)
     tgt = os.path.join(outdir, os.path.basename(f))
     
     return dict(file=f, target=tgt, mtype=mtype, method=method, lane=lane, flowcellid=flowcellid, flowcelltype=flowcelltype, date=date, bc=bc, sample=sample)
