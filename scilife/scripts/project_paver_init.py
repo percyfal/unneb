@@ -45,16 +45,17 @@ import ngs.paver
 
 from scilife.config import get_bcbb_config, get_genome_ref
 from scilife.templates import TEMPLATE_DIR, SBATCH_HEADER_TEMPLATE
-from scilife.paver.uppmax import project_analysis_pipeline
+from scilife.paver.uppmax import automated_initial_analysis
 
 options(
+    project_name = ${project_dir},
     dirs = Bunch(
         project = path("${project_dir}"),
         sbatch = path("${sbatch_dir}"),
         log = path("${log_dir}"),
         git = path("${git_dir}"),
         intermediate = path("${intermediate_dir}"),
-        data = path("${project_dir}") / "data",
+        data = path("${data_dir}"),
         ),
     sbatch = Bunch(
         project_id = "${uppmax_project_id}",
@@ -111,26 +112,26 @@ def nonempty(x):
         raise ValidationError("Please enter some text.")
     return x
 
-def choice(*l):
-    def val(x):
-        if x not in l:
-            raise ValidationError('Please enter one of %s.' % ', '.join(l))
-        return x
-    return val
+# def choice(*l):
+#     def val(x):
+#         if x not in l:
+#             raise ValidationError('Please enter one of %s.' % ', '.join(l))
+#         return x
+#     return val
 
-def boolean(x):
-    if x.upper() not in ('Y', 'YES', 'N', 'NO'):
-        raise ValidationError("Please enter either 'y' or 'n'.")
-    return x.upper() in ('Y', 'YES')
+# def boolean(x):
+#     if x.upper() not in ('Y', 'YES', 'N', 'NO'):
+#         raise ValidationError("Please enter either 'y' or 'n'.")
+#     return x.upper() in ('Y', 'YES')
 
-def suffix(x):
-    if not (x[0:1] == '.' and len(x) > 1):
-        raise ValidationError("Please enter a file suffix, "
-                              "e.g. '.rst' or '.txt'.")
-    return x
+# def suffix(x):
+#     if not (x[0:1] == '.' and len(x) > 1):
+#         raise ValidationError("Please enter a file suffix, "
+#                               "e.g. '.rst' or '.txt'.")
+#     return x
 
-def ok(x):
-    return x
+# def ok(x):
+#     return x
 
 
 def do_prompt(d, key, text, default=None, validator=nonempty):
@@ -163,16 +164,25 @@ UTF-8 or Latin-1.'''
 
 def inner_main(args):
     d = {}
-    print colored('''pavement_init.py configuration''', attrs=["bold"])
+    print colored('''project_paver_init.py configuration''', attrs=["bold"])
     print
 
     print '''
-The project name is usually of the form j_doe_00_00, but can be any name. This name will be used to generate a directory where the pavement.py file is installed
+    The project name is usually of the form j_doe_00_00, but can be
+    any name. This name will be used to generate a directory where the
+    pavement.py file is installed
 '''
     do_prompt(d, 'project', 'Project name')
 
     print '''
-The top path defines the root of the project. Relative to this path there should be a data directory with raw data, an intermediate directory with intermediate data analyses. pavement_init.py will set up a directory for the pavement.py file, an sbatch directory for sbatch files, and a log directory for logging.
+    The project_dir path defines the root of the project. Relative to this
+    path there should be a data directory with raw data, and an
+    intermediate directory with intermediate data analyses.
+    project_paver_init.py will set up a directory for the pavement.py file, an
+    sbatch directory for sbatch files, and a log directory for logging.
+
+    REMEMBER: set project_dir to something like
+    /proj/a2010002/projects/j_doe_00_00
 '''
     do_prompt(d, 'project_dir', 'project path for the project', '.', is_path)
     d['project_dir'] = path.abspath(d['project_dir'])
@@ -196,7 +206,7 @@ The top path defines the root of the project. Relative to this path there should
     d['sbatch_dir'] = path.join(d['cur_dir'], 'sbatch')
     d['log_dir'] = path.join(d['cur_dir'], 'log')
     d['sphinx_dir'] = path.join(d['git_dir'], 'doc')
-    d['intermediate_dir'] = path.join(d['project_dir'], "nobackup", "data")
+    d['intermediate_dir'] = path.join(d['project_dir'], "nobackup", "intermediate")
     d['data_dir'] = path.join(d['project_dir'], "nobackup", "data")
 
     mkdir_p(d['git_dir'])

@@ -5,6 +5,7 @@ System related tasks
 """
 import os
 import glob
+import fnmatch
 from paver.easy import *
 from ngs.paver import run_cmd
 
@@ -80,36 +81,47 @@ def pbzip2(options, info):
             run_cmd(cl, files.next(), None, options.run, "Running pbzip2")
 
 @task
-@cmdopts([('glob=', 'g', 'glob for pigz'), ('decompress','d','decompress'), ('opts=', 'o', 'options')])
+@cmdopts([('pattern=', 'p', 'wildcard pattern for pigz'), ('decompress','d','decompress'), ('opts=', 'o', 'options'),
+          ('recursive', 'r', 'recursive')])
 def pigz(options):
     """Run pigz on a bunch of files.
 
-    Options (set in sys.pbzip2 section by default).
-
-    basedir
-       directory to work in. Default: os.path.curdir
+    Options (set in sys.pigz section by default).
 
     pattern
-       file glob to look for under basedir. Default: None
+       file glob to look for. Default: None
 
     opts
        command line options to pass to pbzip2. Default: -v
 
     decompress
        decompress file. Default: False
+
+    recursive
+       recursive search. Default: False
     """
     options.order('pigz')
-    basedir = path(os.path.abspath(options.get('basedir', path(os.path.curdir))))
-    glob_str = basedir / options.get("glob", "")
-    files = glob.glob(glob_str)
+    glob_str = options.get("pattern", "")
     opts = options.get('opts', "-v")
     decompress = options.get('decompress', False)
+    recursive = options.get('recursive', False)
+    files = []
     if decompress:
         opts = opts + "d"
-    for f in files:
-        if not os.path.islink(f):
-            cl = [" ".join(['pigz', opts, f])]
-            run_cmd(cl, f, None, options.run, "Running pigz on %s" % f)
+    if not recursive:
+        files = glob.glob(glob_str)
+    else:
+        for root, dirnames, filenames in os.walk(os.getcwd()):
+            for filename in fnmatch.filter(filenames, glob_str):
+                files.append(os.path.join(root, filename))
+    cl = []
+    if len(files) > 0:
+        for f in files:
+            if not os.path.islink(f):
+                cl.append(" ".join(['pigz', opts, f]))
+        run_cmd(cl, files[0], None, options.run, "Running pigz on %s" % " ".join(files))
+    else:
+        print >> sys.stderr, "No files to process"
 
 @task
 @cmdopts([('archive=', 'a', 'archive for tar'), ('glob=', 'g', 'glob for tar'), ('opts=', 'o', 'options')])
