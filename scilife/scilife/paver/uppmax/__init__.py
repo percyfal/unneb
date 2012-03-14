@@ -31,8 +31,10 @@ def automated_initial_analysis():
 def multi_automated_initial_analysis():
     """Generate command for all flowcells."""
     for fc in options.illumina.flowcell_ids:
-        options.automated_initial_analysis.yaml_config = "/bubo/home/h1/perun/config/peru_post_process.yaml"
         options.automated_initial_analysis.INPUT = os.path.join(options.dirs.data, os.path.basename(fc))
-        options.automated_initial_analysis.run_info = os.path.join(options.dirs.data, os.path.basename(fc), "project_run_info.yaml")
-        options.sbatch.jobname = "aia_" + fc[7:12]
+        options.sbatch.jobname = "aia_" + "".join([x[0:2] for x in options.project_name.split("_")]) + fc[7:12]
+        oldworkdir = options.sbatch.workdir
+        options.sbatch.workdir = os.path.join(options.sbatch.workdir, fc)
+        options.automated_initial_analysis.run_info = os.path.join(options.sbatch.workdir, os.path.basename(fc) + ".yaml")
         call_task("scilife.paver.uppmax.automated_initial_analysis")
+        options.sbatch.workdir = oldworkdir

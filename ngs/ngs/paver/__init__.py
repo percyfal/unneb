@@ -149,6 +149,7 @@ def run_cmd(cl, infile=None, outfile=None, run=True, msg=None):
             if path(infile).mtime < path(outfile).mtime:
                 run = False
                 print "-----> Task is up to date"
+                options.cl = []
     if not path(infile).exists() and not infile is None:
         run = False
         print "-----> No such infile " + str(infile)

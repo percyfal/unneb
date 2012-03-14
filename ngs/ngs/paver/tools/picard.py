@@ -194,8 +194,49 @@ def BuildBamIndex():
 
 
 @task
+@cmdopts([("INPUT=", "I", "input"), ("OUTPUT=", "O", "output")])
 def MergeSamFiles():
-    pass
+    """Merge sam/bam files."""
+    options.order("MergeSamFiles")
+    default = options.picard_default
+    infile = options.get("INPUT", None)
+    validation_stringency = options.get("VALIDATION_STRINGENCY", "SILENT")
+    if not infile is None:
+        if len(infile) < 2:
+            print >> sys.stderr, "len(infile) < 2: need at least two files for merging"
+            sys.exit()
+        prefix, ext = os.path.splitext(infile[0])
+        outfile = options.get("OUTPUT", prefix + "-merge.bam")
+        opts = options.get("opts", "")
+        opts += " OUTPUT=%s VALIDATION_STRINGENCY=%s" % (outfile, validation_stringency)
+        for f in infile:
+            opts += " INFILE=%s" % f
+        cl = [" ".join(["java -jar", options.get("javamem", default.get("javamem")), path(options.get("picard_home", default.get("picard_home"))) / "MergeSamFiles.jar", opts])]
+        run_cmd(cl, infile, outfile, options.get("run"), msg="Running MergeSamFiles")
+    else:
+        print >> sys.stderr, "required argument infile missing"
+
+@task
+@cmdopts([("INPUT=", "I", "input"), ("OUTPUT=", "O", "output"),
+          ("BI=", "B", "bait"), ("TI=", "T", "target")])
+def CalculateHsMetrics():
+    """Calculate hsmetrics."""
+    options.order("CalculateHsMetrics")
+    default = options.picard_default
+    infile = options.get("INPUT", None)
+    targets = options.get("TI", None)
+    validation_stringency = options.get("VALIDATION_STRINGENCY", "SILENT")
+    if not infile is None and not targets is None:
+        prefix, ext = os.path.splitext(infile)
+        outfile = options.get("OUTPUT", prefix + ".hs_metrics")
+        baits = options.get("BI", targets)
+        opts = options.get("opts", "")
+        opts += " INPUT=%s OUTPUT=%s BI=%s TI=%s VALIDATION_STRINGENCY=%s" % (infile, outfile, baits, targets, validation_stringency)
+        cl = [" ".join(["java -jar", options.get("javamem", default.get("javamem")), path(options.get("picard_home", default.get("picard_home"))) / "CalculateHsMetrics.jar", opts])]
+        run_cmd(cl, infile, outfile, options.get("run"), msg="Running CollectAlignmentSummaryMetrics")
+    else:
+        print >> sys.stderr, "required argument infile missing"
+
 
 @task
 @cmdopts([("INPUT=", "I", "input"), ("OUTPUT=", "O", "output"),
@@ -209,10 +250,58 @@ def CollectAlignmentSummaryMetrics():
     if not infile is None:
         prefix, ext = os.path.splitext(infile)
         outfile = options.get("OUTPUT", prefix + ".align_metrics")
-        ref = options.get("REFERENCE_SEQUENCE", options.index_loc["sam_fa"][options.ref][2])
+        if not options.ref:
+            ref = "null"
+        else:
+            ref = options.get("REFERENCE_SEQUENCE", options.index_loc["sam_fa"][options.ref][2])
         opts = options.get("opts", "")
         opts += " INPUT=%s OUTPUT=%s REFERENCE_SEQUENCE=%s VALIDATION_STRINGENCY=%s" % (infile, outfile, ref, validation_stringency)
         cl = [" ".join(["java -jar", options.get("javamem", default.get("javamem")), path(options.get("picard_home", default.get("picard_home"))) / "CollectAlignmentSummaryMetrics.jar", opts])]
+        run_cmd(cl, infile, outfile, options.get("run"), msg="Running CollectAlignmentSummaryMetrics")
+    else:
+        print >> sys.stderr, "required argument infile missing"
+
+@task
+@cmdopts([("INPUT=", "I", "input"), ("OUTPUT=", "O", "output")])
+def CollectInsertSizeMetrics():
+    """Collect insert size metrics."""
+    options.order("CollectInsertSizeMetrics")
+    default = options.picard_default
+    infile = options.get("INPUT", None)
+    validation_stringency = options.get("VALIDATION_STRINGENCY", "SILENT")
+    if not infile is None:
+        prefix, ext = os.path.splitext(infile)
+        outfile = options.get("OUTPUT", prefix + ".insert_metrics")
+        histfile = prefix + ".insert_hist"
+        if not options.ref:
+            ref = "null"
+        else:
+            ref = options.get("REFERENCE_SEQUENCE", options.index_loc["sam_fa"][options.ref][2])
+        opts = options.get("opts", "")
+        opts += " INPUT=%s OUTPUT=%s REFERENCE_SEQUENCE=%s HISTOGRAM_FILE=%s VALIDATION_STRINGENCY=%s" % (infile, outfile, ref, histfile, validation_stringency)
+        cl = [" ".join(["java -jar", options.get("javamem", default.get("javamem")), path(options.get("picard_home", default.get("picard_home"))) / "CollectInsertSizeMetrics.jar", opts])]
+        run_cmd(cl, infile, outfile, options.get("run"), msg="Running CollectInsertSizeMetrics")
+    else:
+        print >> sys.stderr, "required argument infile missing"
+
+
+@task
+@cmdopts([("INPUT=", "I", "input"), ("OUTPUT=", "O", "output"),
+          ("BI=", "B", "bait"), ("TI=", "T", "target")])
+def CalculateHsMetrics():
+    """Calculate hsmetrics."""
+    options.order("CalculateHsMetrics")
+    default = options.picard_default
+    infile = options.get("INPUT", None)
+    targets = options.get("TI", None)
+    validation_stringency = options.get("VALIDATION_STRINGENCY", "SILENT")
+    if not infile is None and not targets is None:
+        prefix, ext = os.path.splitext(infile)
+        outfile = options.get("OUTPUT", prefix + ".hs_metrics")
+        baits = options.get("BI", targets)
+        opts = options.get("opts", "")
+        opts += " INPUT=%s OUTPUT=%s BI=%s TI=%s VALIDATION_STRINGENCY=%s" % (infile, outfile, baits, targets, validation_stringency)
+        cl = [" ".join(["java -jar", options.get("javamem", default.get("javamem")), path(options.get("picard_home", default.get("picard_home"))) / "CalculateHsMetrics.jar", opts])]
         run_cmd(cl, infile, outfile, options.get("run"), msg="Running CollectAlignmentSummaryMetrics")
     else:
         print >> sys.stderr, "required argument infile missing"
