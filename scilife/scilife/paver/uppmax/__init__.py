@@ -2,7 +2,7 @@
 uppmax helper functions
 """
 import os
-
+import drmaa
 
 from paver.easy import *
 import ngs.paver
@@ -13,7 +13,7 @@ from scilife.templates import TEMPLATE_DIR, SBATCH_HEADER_TEMPLATE
 options.automated_initial_analysis = Bunch()
 
 @task
-@cmdopts([("INPUT=", "I", "input flowcell to run pipeline on")])
+@cmdopts([("INPUT=", "I", "input flowcell to run pipeline on"), ("workdir=", "w", "Working directory")])
 def automated_initial_analysis():
     """Run automated_initial_analysis.
 
@@ -21,10 +21,11 @@ def automated_initial_analysis():
 
     options.order("automated_initial_analysis")
     INPUT = options.get("INPUT", None)
+    work_dir = options.get("workdir", "")
     if not INPUT is None:
         yaml_config = options.get("yaml_config", "post_process.yaml")
         run_info = options.get("run_info", "run_info.yaml")
-        cl = [" ".join(["automated_initial_analysis.py", yaml_config, INPUT, run_info])]
+        cl = [" ".join(["automated_initial_analysis.py", yaml_config, INPUT, run_info, work_dir])]
         run_cmd(cl, INPUT, None, True, "running automated_initial_analysis")
 
 @task
@@ -38,3 +39,4 @@ def multi_automated_initial_analysis():
         options.automated_initial_analysis.run_info = os.path.join(options.sbatch.workdir, os.path.basename(fc) + ".yaml")
         call_task("scilife.paver.uppmax.automated_initial_analysis")
         options.sbatch.workdir = oldworkdir
+
