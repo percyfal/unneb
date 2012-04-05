@@ -135,3 +135,20 @@ aln <- cbind(qc.df[i.aln,], do.call("rbind", do.call("c", metrics[i.aln])))
 stripplot(TOTAL_READS/1e6 + PF_READS_ALIGNED/1e6  ~ project:sample, data=aln[aln$CATEGORY=="PAIR",], auto.key=list(text=c("Reads", "Aligned")), scales=list(x=list(rot=45),relation="free"), ylab="Reads (millions)", xlab="project:sample", par.settings=simpleTheme(col=c("black","red"), pch=21))
 stripplot(PCT_PF_READS_ALIGNED ~ project:sample, data=aln[aln$CATEGORY=="PAIR",], scales=list(x=list(rot=45)), xlab="project:sample", par.settings=simpleTheme(pch=19))
 stripplot(PCT_PF_READS_ALIGNED ~ project, data=aln[aln$CATEGORY=="PAIR",], scales=list(x=list(rot=45)), xlab="project", par.settings=simpleTheme(pch=19))
+
+##############################
+## Look at hs metrics
+##############################
+i.hs <- qc.df$mtype=="hs_metrics"
+i.hs[is.na(i.hs)] <- FALSE
+hs <- cbind(qc.df[i.hs,], do.call("rbind", do.call("c", metrics[i.hs])))
+
+                                        # Some nice plots
+stripplot(TOTAL_READS/1e6 + PF_READS_ALIGNED/1e6  ~ project:sample, data=aln[aln$CATEGORY=="PAIR",], auto.key=list(text=c("Reads", "Aligned")), scales=list(x=list(rot=45),relation="free"), ylab="Reads (millions)", xlab="project:sample", par.settings=simpleTheme(col=c("black","red"), pch=21))
+stripplot(PCT_PF_READS_ALIGNED ~ project:sample, data=aln[aln$CATEGORY=="PAIR",], scales=list(x=list(rot=45)), xlab="project:sample", par.settings=simpleTheme(pch=19))
+stripplot(PCT_PF_READS_ALIGNED ~ project, data=aln[aln$CATEGORY=="PAIR",], scales=list(x=list(rot=45)), xlab="project", par.settings=simpleTheme(pch=19))
+
+##############################
+### Save data
+##############################
+save(file="QCmetrics.rda")
