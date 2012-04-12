@@ -34,7 +34,7 @@ def multi_automated_initial_analysis():
         options.automated_initial_analysis.INPUT = os.path.join(options.dirs.data, os.path.basename(fc))
         options.sbatch.jobname = "aia_" + "".join([x[0:2] for x in options.project_name.split("_")]) + fc[7:12]
         oldworkdir = options.sbatch.workdir
-        options.sbatch.workdir = os.path.join(options.sbatch.workdir, fc[7:12])
+        options.sbatch.workdir = os.path.join(options.sbatch.workdir, fc)
         options.automated_initial_analysis.run_info = os.path.join(options.sbatch.workdir, os.path.basename(fc) + ".yaml")
         call_task("scilife.paver.uppmax.automated_initial_analysis")
         options.sbatch.workdir = oldworkdir

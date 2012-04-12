@@ -13,27 +13,42 @@ from numpy.lib.recfunctions import append_fields
 class DepthOfCoverage(ProgramData):
     """Container class for DepthOfCoverage object"""
     program = "DepthOfCoverage"
-    
+    ext_keys = ["sample_cumulative_coverage_counts", 
+                "sample_cumulative_coverage_proportions",
+                "sample_interval_statistics",
+                "sample_statistics",
+                "sample_interval_summary",
+                "sample_summary"]
+    ext = dict(sample_cumulative_coverage_counts = "sample_cumulative_coverage_counts", 
+               sample_cumulative_coverage_proportions = "sample_cumulative_coverage_proportions",
+               sample_interval_statistics = "sample_interval_statistics",
+               sample_statistics = "sample_statistics",
+               sample_interval_summary = "sample_interval_summary",
+               sample_summary = "sample_summary")
+
     def __init__(self):
         ProgramData.__init__(self)
 
     def read_depthofcoverage(self, prefix, indir="."):
         """read depthofcoverage tables"""
-        ext = ["sample_cumulative_coverage_counts","sample_cumulative_coverage_proportions",
-               "sample_interval_statistics","sample_interval_summary","sample_statistics",
-               "sample_summary"]
         ## Read sample summary - skip last line since lacks columns
-        infile = os.path.abspath(os.path.join(indir, prefix + "." + ext[5]))
+        infile = os.path.abspath(os.path.join(indir, prefix + "." + self.ext["sample_summary"]))
         with open(infile) as fp:
-            self.data[ext[5]] = asciitable.read(infile, delimiter="\t", guess=False, data_end=-1)
+            self.data["sample_summary"] = asciitable.read(infile, delimiter="\t", guess=False, data_end=-1)
             
         ## Read rest of tables
-        for e in ext[0:4]:
-            infile = os.path.abspath(os.path.join(indir, prefix + "." + e))
-            with open(infile) as fp:
-                tab = asciitable.read(self._sniff_table(infile), delimiter="\t", guess=False)
-                self.data[e] = tab
+        for k in self.ext_keys[0:(len(self.ext_keys) - 1)]:
+            infile = os.path.abspath(os.path.join(indir, prefix + "." + self.ext[k]))
+            tab = asciitable.read(self._sniff_table(infile), delimiter="\t", guess=False)
+            self.data[k] = tab
 
+    def read_data(self, prefix, indir="."):
+        ## Read sample summary - skip last line since lacks columns
+        infile = os.path.abspath(os.path.join(indir, prefix + "." + self.ext["sample_summary"]))  
+        self.data["sample_summary"] = self.read_table(infile)
+        for k in self.ext_keys[0:(len(self.ext_keys) - 1)]:
+            infile = os.path.abspath(os.path.join(indir, prefix + "." + self.ext[k]))
+            self.data[k] = self.read_table(infile)
 
     def plot_depthofcoverage(self, which="sample_cumulative_coverage_counts", xlim=(None, None), ylim=(None, None), relative=True, outfile=None):
         """plot depth of coverage"""
@@ -51,6 +66,7 @@ class DepthOfCoverage(ProgramData):
             if relative:
                 y = y/y[0]
             plt.plot(x, y)
-        plt.show()
-
+        if not outfile is None:
+            plt.savefig(outfile)
+        plt.clf()
 
