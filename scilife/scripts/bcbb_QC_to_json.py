@@ -16,6 +16,8 @@ Usage:
 import os
 import sys
 import re
+import yaml
+import xml.parsers.expat
 from optparse import OptionParser
 
 import glob
@@ -27,11 +29,42 @@ from bcbio.broad.metrics import *
 from bcbio.log import logger, setup_logging
 from bcbio.pipeline.qcsummary import FastQCParser
 
+class MetricsParser():
+    """Basic class for parsing metrics"""
+    def __init__(self):
+        pass
+
+    def extract_metrics(self, metrics_file):
+        pass
+
+    def _parse_bc_metrics(self, in_handle):
+        pass
+    
+    def _parse_filter_metrics(self, in_handle):
+        pass
+
 class ExtendedPicardMetricsParser(PicardMetricsParser):
-    """Extend basic functionality and parse all metrics"""
+    """Extend basic functionality and parse all picard metrics"""
 
     def __init__(self):
         PicardMetricsParser.__init__(self)
+
+    def _get_command(self, in_handle):
+        analysis = None
+        while 1:
+            line = in_handle.readline()
+            print line
+            if line.startswith("# net.sf.picard.analysis") or line.startswith("# net.sf.picard.sam"):
+                break
+        return line.rstrip("\n")
+
+    def _read_off_header(self, in_handle):
+        while 1:
+            line = in_handle.readline()
+            if line.startswith("## METRICS"):
+                break
+        return in_handle.readline().rstrip("\n").split("\t")
+
 
     def _read_vals_of_interest(self, want, header, info):
         want_indexes = [header.index(w) for w in header]
@@ -41,6 +74,7 @@ class ExtendedPicardMetricsParser(PicardMetricsParser):
         return vals
 
     def _parse_align_metrics(self, in_handle):
+        command = self._get_command(in_handle)
         header = self._read_off_header(in_handle)
         d = dict([[x, []] for x in header])
         res = dict(FIRST_OF_PAIR = d, SECOND_OF_PAIR = d, PAIR = d)
@@ -86,31 +120,129 @@ class ExtendedPicardMetricsParser(PicardMetricsParser):
                 break
         return in_handle.readline().rstrip("\n").split("\t")
 
+class RunInfoParser():
+    """RunInfo parser"""
+    def __init__(self):
+        self.data = dict()
+        self.element = None
+
+    def parse(self, fp):
+        self._parse_RunInfo(fp)
+
+    def _start_element(self, name, attrs):
+        self.element=name
+        if name == "Run":
+            self.data["Id"] = attrs["Id"]
+            self.data["Number"] = attrs["Number"]
+        elif name == "FlowcellLayout":
+            self.data["FlowcellLayout"] = attrs
+        elif name == "Read":
+            self.data["Reads"].append(attrs)
+            
+    def _end_element(self, name):
+        self.element=None
+
+    def _char_data(self, data):
+        want_elements = ["Flowcell", "Instrument", "Date"]
+        if self.element in want_elements:
+            self.data[self.element] = data
+        if self.element == "Reads":
+            self.data["Reads"] = []
+            
+
+    def _parse_RunInfo(self, fp):
+        p = xml.parsers.expat.ParserCreate()
+        p.StartElementHandler = self._start_element
+        p.EndElementHandler = self._end_element
+        p.CharacterDataHandler = self._char_data
+        p.ParseFile(fp)
+    
+    def to_json(self):
+        return json.dumps(self.data)
+
+class QCLane():
+    """Lane level class for holding qc data"""
+    def __init__(self, flowcell, lane ):
+        pass
+
 class QCSample():
-    """Class for holding qc metrics data"""
+    """Sample-level class for holding qc metrics data"""
 
-    labels = ["name","filename","flowcell","date",
-              "lane","bc","bc_name"]
-    metrics = ["align_metrics",
-              "dup_metrics","hs_metrics","insert_metrics",
-              "eval_metrics","fastqc","fastq_scr"]
+    _metrics = ["align_metrics",
+                "dup_metrics","hs_metrics","insert_metrics",
+                "eval_metrics","fastqc","fastq_scr"]
 
-    def init__(self, name, filename, flowcell, date, lane, bc, bc_name):
+    def __init__(self, flowcell, date, lane, barcode_name, barcode_id, sample_prj, sequence=None, barcode_type=None, genomes_filter_out=None):
         self.sample = {}
-        self.sample["name"] = name
-        self.sample["filename"] = filename
         self.sample["flowcell"] = flowcell
         self.sample["date"] = date
         self.sample["lane"] = lane
-        self.sample["bc"] = bc
-        self.sample["bc_name"] = bc_name
+        self.sample["barcode_name"] = barcode_name
+        self.sample["barcode_id"] = barcode_id
+        self.sample["sample_prj"] = sample_prj
+        self.sample["sequence"] = sequence
+        self.sample["barcode_type"] = barcode_type
+        self.sample["genomes_filter_out"] = genomes_filter_out
         self.metrics = {}
-        for m in metrics:
+        for m in _metrics:
             self.metrics[m] = {}
     
     def to_json(self):
-        pass
-    
+        return json.dumps({'sample':self.sample, 'metrics':self.metrics})
+
+class QCFlowcell():
+    """Flowcell level class for holding qc data"""
+    _metrics = ["RunInfo", "run_info_yaml"]
+
+    def __init__(self, flowcell_dir, archive_dir):
+        self.flowcell_dir = flowcell_dir
+        self.archive_dir = archive_dir
+        self.samples = dict()
+        self.lanes = dict()
+        self.metrics = dict()
+        for m in self._metrics:
+            self.metrics[m] = None
+
+    def parseRunInfo(self, fn="RunInfo.xml"):
+        fp = open(os.path.join(self.archive_dir, fn))
+        parser = RunInfoParser()
+        parser.parse(fp)
+        fp.close()
+        self.metrics["RunInfo"] = parser.to_json()
+
+    def parse_run_info_yaml(self, fn="run_info.yaml"):
+        fp = open(os.path.join(self.archive_dir, fn))
+        runinfo = yaml.load(fp)
+        fp.close()
+        for info in runinfo:
+            if not self.lanes.has_key(info["lane"]):
+                lane = QCLane(None, info["lane"])
+        self.metrics["run_info_yaml"] = json.dumps(runinfo)
+        
+    def to_json(self):
+        return self.metrics
+
+    def read_picard_metrics(self):
+        picard_parser = ExtendedPicardMetricsParser()
+        files = self.get_metrics(self.flowcell_dir)
+        for fn in files:
+            re_str = r'(\d+)_(\d+)_([A-Z0-9a-z]+XX)_?([a-zA-Z0-9]+)?-'
+            m = re.search(re_str, fn)
+            (lane, date, flowcell, bc) = m.groups()
+            sample = "_".join([lane, str(bc)])
+            metrics = picard_parser.extract_metrics([mf])
+            print metrics
+
+    def _get_metrics(self, indir, re_str='.*.(align|hs|insert|dup)_metrics'):
+        matches = []
+        for root, dirnames, filenames in os.walk(indir):
+            for fn in filenames:
+                fn = os.path.basename(mf).replace("_nophix_", "_")
+                if re.match('', fn):
+                    matches.append(os.path.join(root, fn))
+        return matches
+
+
 def main(config_file, fc_dir, run_info_yaml=None):
     config = load_config(config_file)
     if config.get("qcdb", None) is None:
@@ -123,20 +255,22 @@ def main(config_file, fc_dir, run_info_yaml=None):
     run_main(fc_dir, qcdb_store_dir)
 
 def run_main(fc_dir, qcdb_store_dir):
-    metrics_files = _get_metrics(fc_dir)
-    picard_parser = ExtendedPicardMetricsParser()
- 
-    for mf in metrics_files:
-        fn = os.path.basename(mf)
-        #(lane, date, flowcell, bc) = fn.split("_")
-        re_str = r'(\d+)_(\d+)_([A-Z0-9a-z]+XX)_?([a-zA-Z0-9]+)?-'
-        m = re.search(re_str, fn)
-        (lane, date, flowcell, bc) = m.groups()
-        sample = "_".join([lane, str(bc)])
-        #print "%s %s %s %s %s" % (sample, lane, date, flowcell, bc)
-        #print mf
-        metrics = picard_parser.extract_metrics([mf])
-        #print json.dump(metrics, sys.stdout)
+    qc_obj = QCFlowcell(fc_dir, fc_dir)
+    qc_obj.parseRunInfo()
+    qc_obj.parse_run_info_yaml()
+    print qc_obj.to_json()
+    sys.exit()
+#     for mf in metrics_files:
+#         fn = os.path.basename(mf).replace("_nophix_", "_")
+#         print fn
+#         if fn.endswith("bc.metrics"):
+#             re_str = r'(\d+)_(\d+)_([A-Z0-9a-z]+XX).*'
+#             m = re.search(re_str, fn)
+#             (lane, date, flowcell) = m.groups()
+#             bc = None
+#         elif fn.endswith("filter.metrics"):
+#             pass
+# #        else:
         
     fastqc_dir = "/Users/peru/Org/ScilifeCore/delivery_data/projects/SOLiD_JPA/fastqc/GMS_D1_F3.single_fastqc"
     fastqc_file = "/Users/peru/Org/ScilifeCore/delivery_data/projects/SOLiD_JPA/fastqc/GMS_D1_F3.single_fastqc/fastqc_data.txt"
@@ -146,22 +280,11 @@ def run_main(fc_dir, qcdb_store_dir):
     print stats
     print overrep
     print graphs
-#def _read_metrics(infile):
-    
-
-def _get_metrics(indir):
-    matches = []
-    for root, dirnames, filenames in os.walk(indir):
-        for filename in fnmatch.filter(filenames, '*metrics'):
-            matches.append(os.path.join(root, filename))
-    return matches
-
-                                 
 
 if __name__ == "__main__":
     usage = """
-bcbb_QC_to_json.py config flowcellid
-"""
+    bcbb_QC_to_json.py config flowcellid
+    """
     parser = OptionParser(usage=usage)
     parser.add_option("-v", "--verbose", dest="verbose", action="store_true",
                       default=False)
