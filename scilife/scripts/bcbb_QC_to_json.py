@@ -25,6 +25,8 @@ from optparse import OptionParser
 import glob
 import json
 import fnmatch
+#from numpy import recarray
+import numpy as np
 
 from bcbio.pipeline.config_loader import load_config
 from bcbio.broad.metrics import *
@@ -33,7 +35,7 @@ from bcbio.pipeline.qcsummary import FastQCParser
 
 class MetricsParser():
     """Basic class for parsing metrics"""
-    def __init__(self):
+    def __init__(stelf):
         pass
 
     def extract_metrics(self, metrics_file):
@@ -123,23 +125,25 @@ class ExtendedPicardMetricsParser(PicardMetricsParser):
                 break
         return in_handle.readline().rstrip("\n").split("\t")
 
-class RunInfoParser(dict):
+class RunInfoParser():
     """RunInfo parser"""
     def __init__(self):
+        self._data = {}
         self._element = None
 
     def parse(self, fp):
         self._parse_RunInfo(fp)
+        return self._data
 
     def _start_element(self, name, attrs):
         self._element=name
         if name == "Run":
-            self["Id"] = attrs["Id"]
-            self["Number"] = attrs["Number"]
+            self._data["Id"] = attrs["Id"]
+            self._data["Number"] = attrs["Number"]
         elif name == "FlowcellLayout":
-            self["FlowcellLayout"] = attrs
+            self._data["FlowcellLayout"] = attrs
         elif name == "Read":
-            self["Reads"].append(attrs)
+            self._data["Reads"].append(attrs)
             
     def _end_element(self, name):
         self._element=None
@@ -147,9 +151,9 @@ class RunInfoParser(dict):
     def _char_data(self, data):
         want_elements = ["Flowcell", "Instrument", "Date"]
         if self._element in want_elements:
-            self[self._element] = data
+            self._data[self._element] = data
         if self._element == "Reads":
-            self["Reads"] = []
+            self._data["Reads"] = []
 
     def _parse_RunInfo(self, fp):
         p = xml.parsers.expat.ParserCreate()
@@ -192,7 +196,7 @@ class QCSample(dict):
             s = "%s_%s_%s_%s"  % (self["sample"]["lane"], self["sample"]["date"], self["sample"]["flowcell"], self["sample"]["barcode_id"])
         return s
 
-class QCFlowcell(dict):
+class FlowcellQCMetrics(dict):
     """Flowcell level class for holding qc data"""
     _metrics = ["RunInfo", "run_info_yaml"]
 
@@ -201,21 +205,25 @@ class QCFlowcell(dict):
         self.archive_dir = archive_dir
         self["_id"] = None
         self["name"] = None
+        self["entity_type"] = "FlowcellQCMetrics"
+        self["entity_version"] = "0.1"
         self["sample"] = dict()
         self["lane"] = dict()
         self["metrics"] = dict()
         for m in self._metrics:
             self["metrics"][m] = None
 
+    # def __repr__(self):
+    #     return "<%s object, version %s>" % (self["type"], self["version"])
+        
     def parseRunInfo(self, fn="RunInfo.xml"):
         fp = open(os.path.join(self.archive_dir, fn))
         parser = RunInfoParser()
-        parser.parse(fp)
+        data = parser.parse(fp)
         fp.close()
-        self["metrics"]["RunInfo"] = parser
+        self["metrics"]["RunInfo"] = data
         self["_id"] = self.get_db_id()
         self["name"] = self.get_id()
-
 
     def parse_run_info_yaml(self, fn="run_info.yaml"):
         fp = open(os.path.join(self.archive_dir, fn))
@@ -232,15 +240,16 @@ class QCFlowcell(dict):
         self["metrics"]["run_info_yaml"] = runinfo
 
     def get_flowcell(self):
-        return self["metrics"]["RunInfo"]["Flowcell"]
+        return self.get("metrics").get("RunInfo").get("Flowcell")
     def get_date(self):
-        return self["metrics"]["RunInfo"]["Date"]
+        return self.get("metrics").get("RunInfo").get("Date")
     def get_id(self):
-        return self["metrics"]["RunInfo"]["Id"]
+        return self.get("metrics").get("RunInfo").get("Id")
     def get_db_id(self):
         return hashlib.md5(self.get_id()).hexdigest()
     def get_run_id(self, run_prefix=0):
-        return self["metrics"]["RunInfo"]["Id"].replace("%s_%s%s_" % (self["metrics"]["RunInfo"]["Instrument"], run_prefix, self["metrics"]["RunInfo"]["Number"]), "")
+        vals = self["metrics"]["RunInfo"]["Id"].split("_")
+        return "%s_%s" % (vals[0], vals[3])
 
     def to_json(self):
         samples = [self["sample"][s] for s in self["sample"]]
@@ -265,7 +274,6 @@ class QCFlowcell(dict):
             metrics = picard_parser.extract_metrics(self["sample"][s].picard_files)
             self["sample"][s]["metrics"]["picard_metrics"] = metrics
 
-
     def _get_metrics(self, indir, re_str='.*.(align|hs|insert|dup)_metrics'):
         matches = []
         for root, dirnames, filenames in os.walk(indir):
@@ -279,23 +287,33 @@ class QCFlowcell(dict):
             d = glob.glob(os.path.join(self.flowcell_dir, "fastqc", "%s_%s_*_%s*" % (self["sample"][s]["sample"]["lane"], self.get_run_id(), self["sample"][s]["sample"]["barcode_id"])))
             fastqc_dir=d[0]
             fqparser = ExtendedFastQCParser(fastqc_dir)
-            #graphs = fqparser.get_fastqc_graphs()
             stats = fqparser.get_fastqc_summary()
             self["sample"][s]["metrics"]["fastqc"] = {'stats':stats}
-            # print stats
-            # print overrep
-            # print graphs
         
 class ExtendedFastQCParser(FastQCParser):
     def __init__(self, base_dir):
         FastQCParser.__init__(self, base_dir)
 
     def get_fastqc_summary(self):
-        for line in self._fastqc_data_section("Per base sequence quality"):
-            if line.startswith("#"):
-                print line.split("\t")
-    
+        metric_labels = ["Per base sequence quality", "Basic Statistics", "Per sequence quality scores",
+                         "Per base sequence content", "Per base GC content", "Per sequence GC content",
+                         "Per base N content", "Sequence Length Distribution", "Sequence Duplication Levels",
+                         "Overrepresented sequences", "Kmer Content"]
+        metrics = {x : self._to_dict(self._fastqc_data_section(x)) for x in metric_labels}
+        return metrics
 
+    def _to_dict(self, section):
+        if len(section) == 0:
+            return {}
+        header = [x.strip("#") for x in section[0].rstrip("\t").split("\t")]
+        d = []
+        for l in section[1:]:
+            d.append(l.split("\t"))
+        data = np.array(d)
+        df = {header[i]:data[:,i].tolist() for i in range(0,len(header))}
+        return df
+
+        
 def main(config_file, fc_dir, run_info_yaml=None):
     config = load_config(config_file)
     if config.get("qcdb", None) is None:
@@ -308,7 +326,7 @@ def main(config_file, fc_dir, run_info_yaml=None):
     run_main(fc_dir, qcdb_store_dir)
 
 def run_main(fc_dir, qcdb_store_dir):
-    qc_obj = QCFlowcell(fc_dir, fc_dir)
+    qc_obj = FlowcellQCMetrics(fc_dir, fc_dir)
     qc_obj.parseRunInfo()
     qc_obj.parse_run_info_yaml()
     qc_obj.read_picard_metrics()
@@ -317,13 +335,19 @@ def run_main(fc_dir, qcdb_store_dir):
     db = couch['qc']
     obj = db.get(qc_obj.get_db_id())
     if obj is None:
-        db.save(qc_obj)
+        if options.dry_run:
+            print "DRY_RUN: saving qc data for %s" % qc_obj.get_id()
+        else:
+            db.save(qc_obj)
     else:
-        pass
-    #qc_obj["_rev"] = obj["_rev"]
-    #    db.save(qc_obj)
-    #print qc_obj
+        if options.dry_run:
+            print "DRY_RUN: updating %s" % qc_obj.get_id()
+        else:
+            qc_obj["_rev"] = obj.get("_rev")
+            db.save(qc_obj)
+    
 
+    
 if __name__ == "__main__":
     usage = """
     bcbb_QC_to_json.py config flowcellid
