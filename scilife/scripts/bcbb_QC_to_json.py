@@ -136,7 +136,7 @@ def run_main(fc_dir, qcdb_store_dir):
         #print "%s %s %s %s %s" % (sample, lane, date, flowcell, bc)
         #print mf
         metrics = picard_parser.extract_metrics([mf])
-        #print json.dump(metrics, sys.stdout)
+        print json.dump(metrics, sys.stdout)
         
     fastqc_dir = "/Users/peru/Org/ScilifeCore/delivery_data/projects/SOLiD_JPA/fastqc/GMS_D1_F3.single_fastqc"
     fastqc_file = "/Users/peru/Org/ScilifeCore/delivery_data/projects/SOLiD_JPA/fastqc/GMS_D1_F3.single_fastqc/fastqc_data.txt"
