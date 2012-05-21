@@ -14,7 +14,10 @@
 read.dup_metrics <- function(infile, pct.mult=TRUE, pct.char=list("PERCENT"), ...) {
     lines <- readLines(infile)
     res <- list()
-    res$metrics <- rbind(read.table(textConnection(lines[7:8]), header=TRUE, fill=TRUE, sep="\t", ...))
+    # Ugly hack to fix the problem of European style csv files
+    lines[8] <- gsub(",", ".", lines[8])
+    tmp <- rbind(read.table(textConnection(lines[7:8]), header=TRUE, fill=TRUE, sep="\t", ...))
+    res$metrics <- tmp
     res$metrics[res$metrics=="?"] <- NA
     if (pct.mult) {
         i <- unique(do.call("c", lapply(pct.char, function(x) {which(grepl(x, colnames(res$metrics)))})))
@@ -24,9 +27,12 @@ read.dup_metrics <- function(infile, pct.mult=TRUE, pct.char=list("PERCENT"), ..
 }
 
 read.align_metrics <- function(infile, pct.mult=TRUE, pct.char=list("PCT", "STRAND_BALANCE", "PF_HQ_ERROR_RATE"), ...) {
+    cols <- c("CATEGORY","TOTAL_READS","PF_READS","PCT_PF_READS","PF_NOISE_READS","PF_READS_ALIGNED","PCT_PF_READS_ALIGNED","PF_HQ_ALIGNED_READS","PF_HQ_ALIGNED_BASES","PF_HQ_ALIGNED_Q20_BASES","PF_HQ_MEDIAN_MISMATCHES","PF_HQ_ERROR_RATE","MEAN_READ_LENGTH","READS_ALIGNED_IN_PAIRS","PCT_READS_ALIGNED_IN_PAIRS","BAD_CYCLES","STRAND_BALANCE","PCT_CHIMERAS","PCT_ADAPTER")
     lines <- readLines(infile)
+    lines[7:10] <- gsub(",", ".", lines[7:10])
     res <- list()
-    res$metrics <- rbind(read.table(textConnection(lines[7:10]), header=TRUE, fill=TRUE, sep="\t", ...))
+    tmp <- rbind(read.table(textConnection(lines[7:10]), header=TRUE, fill=TRUE, sep="\t", ...))
+    res$metrics <- tmp[,match(cols, colnames(tmp))]
     res$metrics[res$metrics=="?"] <- NA
     res$metrics <- cbind(CATEGORY=res$metrics[,1], as.data.frame(lapply(res$metrics[,-1], function(x){if (mode(x) != "numeric") x <- as.numeric(x); x})))
     res$metrics$CATEGORY <- factor(res$metrics$CATEGORY, levels=c("FIRST_OF_PAIR", "SECOND_OF_PAIR", "PAIR"))
@@ -58,9 +64,12 @@ read.eval_metrics <- function(infile, ...) {
 }
 
 read.hs_metrics <- function(infile, pct.mult=TRUE, pct.char=list("PCT", "ON_BAIT_VS_SELECTED"), ...) {
+    cols <- c("BAIT_SET","GENOME_SIZE","BAIT_TERRITORY","TARGET_TERRITORY","BAIT_DESIGN_EFFICIENCY","TOTAL_READS","PF_READS","PF_UNIQUE_READS","PCT_PF_READS","PCT_PF_UQ_READS","PF_UQ_READS_ALIGNED","PCT_PF_UQ_READS_ALIGNED","PF_UQ_BASES_ALIGNED","ON_BAIT_BASES","NEAR_BAIT_BASES","OFF_BAIT_BASES","ON_TARGET_BASES","PCT_SELECTED_BASES","PCT_OFF_BAIT","ON_BAIT_VS_SELECTED","MEAN_BAIT_COVERAGE","MEAN_TARGET_COVERAGE","PCT_USABLE_BASES_ON_BAIT","PCT_USABLE_BASES_ON_TARGET","FOLD_ENRICHMENT","ZERO_CVG_TARGETS_PCT","FOLD_80_BASE_PENALTY","PCT_TARGET_BASES_2X","PCT_TARGET_BASES_10X","PCT_TARGET_BASES_20X","PCT_TARGET_BASES_30X","HS_LIBRARY_SIZE","HS_PENALTY_10X","HS_PENALTY_20X","HS_PENALTY_30X")
     lines <- readLines(infile)
+    lines[7:10] <- gsub(",", ".", lines[7:10])
     res <- list()
-    res$metrics <- rbind(read.table(textConnection(lines[7:8]), header=TRUE, fill=TRUE, sep="\t", ...))
+    tmp <- rbind(read.table(textConnection(lines[7:10]), header=TRUE, fill=TRUE, sep="\t", ...))
+    res$metrics <- tmp[,match(cols,colnames(tmp))]
     res$metrics[res$metrics=="?"] <- NA
     if (pct.mult) {
         i <- unique(do.call("c", lapply(pct.char, function(x) {which(grepl(x, colnames(res$metrics)))})))
@@ -142,7 +151,6 @@ stripplot(PCT_PF_READS_ALIGNED ~ project, data=aln[aln$CATEGORY=="PAIR",], scale
 i.hs <- qc.df$mtype=="hs_metrics"
 i.hs[is.na(i.hs)] <- FALSE
 hs <- cbind(qc.df[i.hs,], do.call("rbind", do.call("c", metrics[i.hs])))
-
                                         # Some nice plots
 stripplot(TOTAL_READS/1e6 + PF_READS_ALIGNED/1e6  ~ project:sample, data=aln[aln$CATEGORY=="PAIR",], auto.key=list(text=c("Reads", "Aligned")), scales=list(x=list(rot=45),relation="free"), ylab="Reads (millions)", xlab="project:sample", par.settings=simpleTheme(col=c("black","red"), pch=21))
 stripplot(PCT_PF_READS_ALIGNED ~ project:sample, data=aln[aln$CATEGORY=="PAIR",], scales=list(x=list(rot=45)), xlab="project:sample", par.settings=simpleTheme(pch=19))
@@ -152,3 +160,4 @@ stripplot(PCT_PF_READS_ALIGNED ~ project, data=aln[aln$CATEGORY=="PAIR",], scale
 ### Save data
 ##############################
 save(file="QCmetrics.rda")
+
