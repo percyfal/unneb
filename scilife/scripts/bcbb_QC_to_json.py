@@ -37,38 +37,30 @@ class MetricsParser():
     """Basic class for parsing metrics"""
     def __init__(self):
         pass
-        
-    def extract_metrics(self, metrics_file):
-        extension_maps = dict(
-            filter_metrics=(self._parse_filter_metrics, "FILTER"),
-            bc_metrics=(self._parse_bc_metrics, "BARCODE")
-            )
-        ## Modelled after broad.metrics: here only one file is allowed
-        all_metrics = dict()
-        for fname in metrics_file:
-            fname = metrics_file
-            ext = os.path.splitext(fname)[-1][1:]
-            try:
-                parse_fn, prefix = extension_maps[ext]
-            except KeyError:
-                parse_fn = None
-            if parse_fn:
-                with open(fname) as in_handle:
-                    for key, val in parse_fn(in_handle).iteritems():
-                        if not key.startswith(prefix):
-                            key = "%s_%s" % (prefix, key)
-                        all_metrics[key] = al
-        return all_metrics
-            
-    def _parse_bc_metrics(self, in_handle):
+
+    def parse_bc_metrics(self, in_handle):
         data = {}
-        for key, val in in_handle.readline().split("\t"):
-            data[key] = val
+        for line in in_handle.readline():
+            vals = line.split("\t").rstrip("\t")
+            data[vals[0]] = vals[1]
         return data
-            
-    def _parse_filter_metrics(self, in_handle):
+    
+    def parse_filter_metrics(self, in_handle):
         data = {}
-        data["reads_processed"] = 
+        data["reads"] = in_handle.readline().rstrip("\n").split(" ")[-1]
+        data["reads_aligned"] = in_handle.readline().split(" ")[-2]
+        data["reads_fail_align"] = in_handle.readline().split(" ")[-2]
+        return data
+
+    def parse_fastq_screen_metrics(self, in_handle):
+        column_names = ["Library", "Unmapped", "Mapped_One_Library", "Mapped_Multiple_Libraries"]
+        in_handle.readline()
+        data = {}
+        for line in in_handle.readline():
+            vals = line.split("\t").rstrip("\t")
+            data[vals[0]] = data[vals[1:]]
+        return data
+
 
 class ExtendedPicardMetricsParser(PicardMetricsParser):
     """Extend basic functionality and parse all picard metrics"""
@@ -188,31 +180,47 @@ class RunInfoParser():
 
 class QCLane(dict):
     """Lane level class for holding qc data"""
-    def __init__(self, flowcell, lane ):
-        self.lane = lane
-        self.bc_metrics = {}
-        self.filter_metrics = {}
+    def __init__(self, flowcell, date, lane ):
+        self["lane"] = lane
+        self["flowcell"] = flowcell
+        self["date"] = date
+        self["bc_metrics"] = {}
+        self["filter_metrics"] = {}
+        
 
 class QCSample(dict):
     """Sample-level class for holding qc metrics data"""
 
     _metrics = ["picard_metrics","fastqc","fastq_scr"]
 
-    def __init__(self, flowcell, date, lane, barcode_name, barcode_id, sample_prj, sequence=None, barcode_type=None, genomes_filter_out=None):
-        self["sample"] = {}
-        self["sample"]["flowcell"] = flowcell
-        self["sample"]["date"] = date
-        self["sample"]["lane"] = lane
-        self["sample"]["barcode_name"] = barcode_name
-        self["sample"]["barcode_id"] = barcode_id
-        self["sample"]["sample_prj"] = sample_prj
-        self["sample"]["sequence"] = sequence
-        self["sample"]["barcode_type"] = barcode_type
-        self["sample"]["genomes_filter_out"] = genomes_filter_out
+    def __init__(self, flowcell, date, lane, barcode_name, barcode_id, sample_prj, sequence=None, barcode_type=None, genomes_filter_out=None, customer_prj=None):
+        self["flowcell"] = flowcell
+        self["date"] = date
+        self["lane"] = lane
+        self["barcode_name"] = barcode_name
+        self["barcode_id"] = barcode_id
+        self["sample_prj"] = sample_prj
+        self["customer_prj"] = customer_prj
+        self["sequence"] = sequence
+        self["barcode_type"] = barcode_type
+        self["genomes_filter_out"] = genomes_filter_out
+        self["bc_count"] = None
         self["metrics"] = {}
         self.picard_files = []
         for m in self._metrics:
             self["metrics"][m] = {}
+
+        # For entity definition
+        self["name"] = "%s_%s_%s_%s" % (lane, date, flowcell, barcode_id)
+        self["_id"] = self.get_db_id()
+        self["entity_type"] = "SampleQCMetrics"
+        self["entity_version"] = "0.1"
+
+
+    def get_id(self):
+        return self.get("name")
+    def get_db_id(self):
+        return hashlib.md5(self.get_id()).hexdigest()
 
     def get_name(self, nophix=False):
         if nophix:
@@ -225,21 +233,20 @@ class FlowcellQCMetrics(dict):
     """Flowcell level class for holding qc data"""
     _metrics = ["RunInfo", "run_info_yaml"]
 
-    def __init__(self, flowcell_dir, archive_dir):
+    def __init__(self, flowcell_dir, archive_dir, couchdb=None):
         self.flowcell_dir = flowcell_dir
         self.archive_dir = archive_dir
+        self.couchdb=couchdb
+        self.db=None
         self["_id"] = None
         self["name"] = None
         self["entity_type"] = "FlowcellQCMetrics"
         self["entity_version"] = "0.1"
-        self["sample"] = dict()
+        self.sample = dict()
         self["lane"] = dict()
         self["metrics"] = dict()
         for m in self._metrics:
             self["metrics"][m] = None
-
-    # def __repr__(self):
-    #     return "<%s object, version %s>" % (self["type"], self["version"])
         
     def parseRunInfo(self, fn="RunInfo.xml"):
         fp = open(os.path.join(self.archive_dir, fn))
@@ -256,14 +263,18 @@ class FlowcellQCMetrics(dict):
         fp.close()
         for info in runinfo:
             if not self["lane"].has_key(info["lane"]):
-                lane = QCLane(None, info["lane"])
+                lane = QCLane(self.get_full_flowcell(), self.get_date(), info["lane"])
                 self["lane"][info["lane"]] = lane
             for mp in info["multiplex"]:
-                sample = QCSample(self.get_flowcell(), self.get_date(), info["lane"], mp["name"], mp["barcode_id"], mp["sample_prj"], mp["sequence"], mp["barcode_type"], mp["genomes_filter_out"])
+                sample = QCSample(self.get_full_flowcell(), self.get_date(), info["lane"], mp["name"], mp["barcode_id"], mp["sample_prj"], mp["sequence"], mp["barcode_type"], mp["genomes_filter_out"])
                 bc_index = "%s_%s" % (info["lane"], mp["barcode_id"])
-                self["sample"][bc_index] = sample
+                self.sample[bc_index] = sample
         self["metrics"]["run_info_yaml"] = runinfo
 
+
+    def get_full_flowcell(self):
+        vals = self["metrics"]["RunInfo"]["Id"].split("_")
+        return vals[3]
     def get_flowcell(self):
         return self.get("metrics").get("RunInfo").get("Flowcell")
     def get_date(self):
@@ -272,12 +283,11 @@ class FlowcellQCMetrics(dict):
         return self.get("metrics").get("RunInfo").get("Id")
     def get_db_id(self):
         return hashlib.md5(self.get_id()).hexdigest()
-    def get_run_id(self, run_prefix=0):
-        vals = self["metrics"]["RunInfo"]["Id"].split("_")
-        return "%s_%s" % (vals[0], vals[3])
+    def get_run_id(self):
+        return "%s_%s" % (self.get_date(), self.get_full_flowcell())
 
     def to_json(self):
-        samples = [self["sample"][s] for s in self["sample"]]
+        samples = [self.sample[s] for s in self.sample]
         return json.dumps({'metrics':self["metrics"], 'samples':samples})
 
     def read_picard_metrics(self):
@@ -290,14 +300,16 @@ class FlowcellQCMetrics(dict):
             m = re.search(re_str, fn_tgt)
             (lane, date, flowcell, bc) = m.groups()
             bc_index = "%s_%s" % (lane, bc)
-            if self["sample"].has_key(bc_index):
-                print >> sys.stderr, "reading metrics %s for sample %s" % (fn, bc_index)
+            if self.sample.has_key(bc_index):
+                pass
+                #print >> sys.stderr, "reading metrics %s for sample %s" % (fn, bc_index)
             else:
-                print >> sys.stderr, "WARNING: no sample %s for metrics %s" % (bc_index, fn)
-            self["sample"][bc_index].picard_files.append(fn)
-        for s in self["sample"]:
-            metrics = picard_parser.extract_metrics(self["sample"][s].picard_files)
-            self["sample"][s]["metrics"]["picard_metrics"] = metrics
+                pass
+                #print >> sys.stderr, "WARNING: no sample %s for metrics %s" % (bc_index, fn)
+            self.sample[bc_index].picard_files.append(fn)
+        for s in self.sample:
+            metrics = picard_parser.extract_metrics(self.sample[s].picard_files)
+            self.sample[s]["metrics"]["picard_metrics"] = metrics
 
     def _get_metrics(self, indir, re_str='.*.(align|hs|insert|dup)_metrics'):
         matches = []
@@ -307,15 +319,52 @@ class FlowcellQCMetrics(dict):
                     matches.append(os.path.join(root, fn))
         return matches
 
+
+    def parse_filter_metrics(self, re_str="*filter_metrics"):
+        for l in self["lane"].keys():
+            f = glob.glob(os.path.join(self.flowcell_dir, "nophix", "%s_%s_%s%s" % (l, self.get_date(), self.get_full_flowcell(), re_str)))
+            fp = open(f[0])
+            parser = MetricsParser()
+            data = parser.parse_filter_metrics(fp)
+            fp.close()
+            self["lane"][l]["filter_metrics"] = data
+            
+    def parse_fastq_screen(self):
+        pass
+
     def read_fastqc_metrics(self):
-        for s in self["sample"]:
-            d = glob.glob(os.path.join(self.flowcell_dir, "fastqc", "%s_%s_*_%s*" % (self["sample"][s]["sample"]["lane"], self.get_run_id(), self["sample"][s]["sample"]["barcode_id"])))
+        for s in self.sample:
+            d = glob.glob(os.path.join(self.flowcell_dir, "fastqc", "%s_%s_*_%s*" % (self.sample[s]["lane"], self.get_run_id(), self.sample[s]["barcode_id"])))
             fastqc_dir=d[0]
             fqparser = ExtendedFastQCParser(fastqc_dir)
             stats = fqparser.get_fastqc_summary()
-            self["sample"][s]["metrics"]["fastqc"] = {'stats':stats}
+            self.sample[s]["metrics"]["fastqc"] = {'stats':stats}
 
-        
+    def save_data_by_flowcell(self):
+        pass
+
+    def _save_obj(self, obj):
+        dbobj = self.db.get(obj.get_db_id())
+        if dbobj is None:
+            self.db.save(obj)
+        else:
+            obj["_rev"] = dbobj.get("_rev")
+            if obj != dbobj:
+                self.db.save(obj)
+            else:
+                pass #print "Objects are identical"
+
+    def save_data_by_sample(self):
+        """Save each sample as a separate document. Flowcell is also saved."""
+        couch = couchdb.Server(self.couchdb)
+        self.db = couch['qc']
+        # Save samples
+        for s in self.sample.keys():
+            obj = self.sample[s]
+            self._save_obj(obj)
+        print self.get_db_id()
+        self._save_obj(self)
+
 class ExtendedFastQCParser(FastQCParser):
     def __init__(self, base_dir):
         FastQCParser.__init__(self, base_dir)
@@ -352,30 +401,22 @@ def main(config_file, fc_dir, run_info_yaml=None):
     run_main(fc_dir, qcdb_store_dir)
 
 def run_main(fc_dir, qcdb_store_dir):
-    qc_obj = FlowcellQCMetrics(fc_dir, fc_dir)
+    qc_obj = FlowcellQCMetrics(fc_dir, fc_dir, couchdb="http://maggie.scilifelab.se:5984")
     qc_obj.parseRunInfo()
     qc_obj.parse_run_info_yaml()
     qc_obj.read_picard_metrics()
     qc_obj.read_fastqc_metrics()
-    couch = couchdb.Server("http://maggie.scilifelab.se:5984")
-    try:
-        db = couch['qc']
-        obj = db.get(qc_obj.get_db_id())
-    except:
-        options.dry_run=True
-
-    if obj is None:
-        if options.dry_run:
-            print "DRY_RUN: saving qc data for %s" % qc_obj.get_id()
-            print qc_obj
-        else:
-            db.save(qc_obj)
+    qc_obj.parse_filter_metrics()
+    if options.dry_run:
+        print "DRY_RUN: saving qc data for %s" % qc_obj.get_id()
     else:
-        if options.dry_run:
-            print "DRY_RUN: updating %s" % qc_obj.get_id()
-        else:
-            qc_obj["_rev"] = obj.get("_rev")
-            db.save(qc_obj)
+        qc_obj.save_data_by_sample()
+    # else:
+    #     if options.dry_run:
+    #         print "DRY_RUN: updating %s" % qc_obj.get_id()
+    #     else:
+    #         qc_obj["_rev"] = obj.get("_rev")
+    #         db.save(qc_obj)
     
 
     
