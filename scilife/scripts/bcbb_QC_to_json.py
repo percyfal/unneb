@@ -40,25 +40,34 @@ class MetricsParser():
 
     def parse_bc_metrics(self, in_handle):
         data = {}
-        for line in in_handle.readline():
-            vals = line.split("\t").rstrip("\t")
-            data[vals[0]] = vals[1]
+        while 1:
+            line = in_handle.readline()
+            if not line:
+                break
+            vals = line.rstrip("\t\n\r").split("\t")
+            data[vals[0]] = int(vals[1])
         return data
     
     def parse_filter_metrics(self, in_handle):
         data = {}
-        data["reads"] = in_handle.readline().rstrip("\n").split(" ")[-1]
-        data["reads_aligned"] = in_handle.readline().split(" ")[-2]
-        data["reads_fail_align"] = in_handle.readline().split(" ")[-2]
+        data["reads"] = int(in_handle.readline().rstrip("\n").split(" ")[-1])
+        data["reads_aligned"] = int(in_handle.readline().split(" ")[-2])
+        data["reads_fail_align"] = int(in_handle.readline().split(" ")[-2])
         return data
 
     def parse_fastq_screen_metrics(self, in_handle):
         column_names = ["Library", "Unmapped", "Mapped_One_Library", "Mapped_Multiple_Libraries"]
         in_handle.readline()
         data = {}
-        for line in in_handle.readline():
-            vals = line.split("\t").rstrip("\t")
-            data[vals[0]] = data[vals[1:]]
+        while 1:
+            line = in_handle.readline()
+            if not line:
+                break
+            vals = line.rstrip("\t\n").split("\t")
+            data[vals[0]] = {}
+            data[vals[0]]["Unmapped"] = float(vals[1])
+            data[vals[0]]["Mapped_One_Library"] = float(vals[2])
+            data[vals[0]]["Mapped_Multiple_Libraries"] = float(vals[3])
         return data
 
 
@@ -82,7 +91,6 @@ class ExtendedPicardMetricsParser(PicardMetricsParser):
             if line.startswith("## METRICS"):
                 break
         return in_handle.readline().rstrip("\n").split("\t")
-
 
     def _read_vals_of_interest(self, want, header, info):
         want_indexes = [header.index(w) for w in header]
@@ -123,6 +131,8 @@ class ExtendedPicardMetricsParser(PicardMetricsParser):
 
     def _read_histogram(self, in_handle):
         labels = self._read_to_histogram(in_handle)
+        if labels is None:
+            return None
         vals = dict([[x, []] for x in labels])
         while 1:
             line = in_handle.readline()
@@ -138,6 +148,8 @@ class ExtendedPicardMetricsParser(PicardMetricsParser):
             line = in_handle.readline()
             if line.startswith("## HISTOGRAM"):
                 break
+            if not line:
+                return None
         return in_handle.readline().rstrip("\n").split("\t")
 
 class RunInfoParser():
@@ -176,24 +188,164 @@ class RunInfoParser():
         p.EndElementHandler = self._end_element
         p.CharacterDataHandler = self._char_data
         p.ParseFile(fp)
-    
+
+
+class IlluminaXMLParser():
+    """Illumina xml data parser. Parses xml files in flowcell directory."""
+    def __init__(self):
+        self._data = {}
+        self._element = None
+        self._tmp = None
+        self._header = None
+
+    def _chart_start_element(self, name, attrs):
+        self._element = name
+        if name == "FlowCellData":
+            self._header = attrs
+        if name == "Layout":
+            n_tiles_per_lane = int(attrs['RowsPerLane']) * int(attrs['ColsPerLane'])
+            nrow = int(attrs['NumLanes']) * n_tiles_per_lane
+            if self._tmp is None:
+                self._tmp = self._header
+                self._tmp.update(attrs)
+                for i in range(1,int(attrs['NumLanes'])+1):
+                    for j in range(1,n_tiles_per_lane+1):
+                        key = "%s_%s" % (i,j)
+                        self._tmp[key] = {}
+                     
+        if name == "TL":
+            self._tmp[attrs["Key"]][self._index] = {}
+            for k in attrs.keys():
+                if k == "Key":
+                    continue
+                if attrs[k] == "NaN":
+                    v = None
+                else:
+                    v = float(attrs[k])
+                                        
+                self._tmp[attrs["Key"]][self._index] = v
+
+    def _chart_end_element(self, name):
+        self._element = None
+    def _chart_char_data(self, data):
+        pass
+
+    def _parse_charts(self, files):
+        for f in files:
+            self._index = os.path.basename(f).rstrip(".xml").lstrip("Chart_")
+            p = xml.parsers.expat.ParserCreate()
+            p.StartElementHandler = self._chart_start_element
+            p.EndElementHandler = self._chart_end_element
+            p.CharacterDataHandler = self._chart_char_data
+            fp = open(f)
+            p.ParseFile(fp)
+            fp.close()
+
+    def _summary_start_element(self, name, attrs):
+        self._element = name
+        if name == "Summary":
+            self._tmp[self._index] = attrs
+        if name == "Lane":
+            self._tmp[self._index][attrs['key']] = attrs
+    def _summary_end_element(self, name):
+        self._element = None
+    def _summary_char_data(self, data):
+        pass
+
+    def _parse_summary(self, files):
+        for f in files:
+            self._index = os.path.basename(f).rstrip(".xml")
+            p = xml.parsers.expat.ParserCreate()
+            p.StartElementHandler = self._summary_start_element
+            p.EndElementHandler = self._summary_end_element
+            p.CharacterDataHandler = self._summary_char_data
+            fp = open(f)
+            p.ParseFile(fp)
+            fp.close()
+
+    def _clusters_start_element(self, name, attrs):
+        self._element = name
+        if name == "Data":
+            self._tmp[self._index] = attrs
+        if name == "Lane":
+            self._tmp[self._index][attrs['key']] = attrs
+    def _clusters_end_element(self, name):
+        self._element = None
+    def _clusters_char_data(self, data):
+        pass
+
+    def _parse_clusters(self, files):
+        for f in files:
+            self._index = os.path.basename(f).rstrip(".xml")
+            p = xml.parsers.expat.ParserCreate()
+            p.StartElementHandler = self._clusters_start_element
+            p.EndElementHandler = self._clusters_end_element
+            p.CharacterDataHandler = self._clusters_char_data
+            fp = open(f)
+            p.ParseFile(fp)
+            fp.close()
+
+    def parse(self, files):
+        error_files = filter(lambda x: os.path.dirname(x).endswith("ErrorRate"), files)
+        self._parse_charts(error_files)
+        self._data["ErrorRate"] = self._tmp
+        self._tmp = None
+        FWHM_files = filter(lambda x: os.path.dirname(x).endswith("FWHM"), files)
+        self._parse_charts(FWHM_files)
+        self._data["FWHM"] = self._tmp
+        self._tmp = None
+        intensity_files = filter(lambda x: os.path.dirname(x).endswith("Intensity"), files)
+        self._parse_charts(intensity_files)
+        self._data["Intensity"] = self._tmp
+        self._tmp = None
+        numgt30_files = filter(lambda x: os.path.dirname(x).endswith("NumGT30"), files)
+        self._parse_charts(numgt30_files)
+        self._data["NumGT30"] = self._tmp
+        self._tmp = None
+        chart_files = filter(lambda x: os.path.basename(x).endswith("_Chart.xml"), files)
+        self._parse_charts(chart_files)
+        self._data["Charts"] = self._tmp
+        self._tmp = None
+
+        ## Parse Summary and clusters
+        self._tmp = {}
+        summary_files = filter(lambda x: os.path.dirname(x).endswith("Summary"), files)
+        self._parse_summary(summary_files)
+        self._data["Summary"] = self._tmp
+        self._tmp = {}
+        cluster_files = filter(lambda x: os.path.basename(x).startswith("NumClusters By"), files)
+        self._parse_clusters(cluster_files)
+        self._data["NumClusters"] = self._tmp
+
+        return self._data
 
 class QCLane(dict):
     """Lane level class for holding qc data"""
-    def __init__(self, flowcell, date, lane ):
+    def __init__(self, flowcell, date, lane):
         self["lane"] = lane
         self["flowcell"] = flowcell
         self["date"] = date
         self["bc_metrics"] = {}
         self["filter_metrics"] = {}
+
+        # For entity definition
+        self["name"] = "%s_%s_%s" % (lane, date, flowcell)
+        self["_id"] = self.get_db_id()
+        self["entity_type"] = "LaneQCMetrics"
+        self["entity_version"] = "0.1"
         
+    def get_id(self):
+        return self.get("name")
+    def get_db_id(self):
+        return hashlib.md5(self.get_id()).hexdigest()
+
 
 class QCSample(dict):
     """Sample-level class for holding qc metrics data"""
 
     _metrics = ["picard_metrics","fastqc","fastq_scr"]
 
-    def __init__(self, flowcell, date, lane, barcode_name, barcode_id, sample_prj, sequence=None, barcode_type=None, genomes_filter_out=None, customer_prj=None):
+    def __init__(self, flowcell, date, lane, barcode_name, barcode_id, sample_prj, sequence=None, barcode_type=None, genomes_filter_out=None, customer_prj=None, customer_sample_name=None):
         self["flowcell"] = flowcell
         self["date"] = date
         self["lane"] = lane
@@ -201,6 +353,7 @@ class QCSample(dict):
         self["barcode_id"] = barcode_id
         self["sample_prj"] = sample_prj
         self["customer_prj"] = customer_prj
+        self["customer_sample_name"] = customer_sample_name
         self["sequence"] = sequence
         self["barcode_type"] = barcode_type
         self["genomes_filter_out"] = genomes_filter_out
@@ -265,6 +418,10 @@ class FlowcellQCMetrics(dict):
             if not self["lane"].has_key(info["lane"]):
                 lane = QCLane(self.get_full_flowcell(), self.get_date(), info["lane"])
                 self["lane"][info["lane"]] = lane
+                ## Add sample for unmatched data
+                sample = QCSample(self.get_full_flowcell(), self.get_date(), info["lane"], "unmatched", "unmatched", "NA", "NA", "NA", "NA")
+                bc_index = "%s_%s" % (info["lane"], "unmatched")
+                self.sample[bc_index] = sample
             for mp in info["multiplex"]:
                 sample = QCSample(self.get_full_flowcell(), self.get_date(), info["lane"], mp["name"], mp["barcode_id"], mp["sample_prj"], mp["sequence"], mp["barcode_type"], mp["genomes_filter_out"])
                 bc_index = "%s_%s" % (info["lane"], mp["barcode_id"])
@@ -330,15 +487,44 @@ class FlowcellQCMetrics(dict):
             self["lane"][l]["filter_metrics"] = data
             
     def parse_fastq_screen(self):
-        pass
+        for s in self.sample:
+            f = glob.glob(os.path.join(self.flowcell_dir, "fastq_screen", "%s_%s*%s_*fastq_screen.txt" % (self.sample[s]["lane"], self.get_run_id(), self.sample[s]["barcode_id"])))
+            parser = MetricsParser()
+            fp = open(f[0])
+            data = parser.parse_fastq_screen_metrics(fp)
+            fp.close()
+            self.sample[s]["metrics"]["fastq_scr"] = data
+
+    def parse_bc_metrics(self):
+        for l in self["lane"].keys():
+            f = glob.glob(os.path.join(self.flowcell_dir, "%s_%s_*barcode" % (l, self.get_run_id()), "*.metrics"))
+            parser = MetricsParser()
+            fp = open(f[0])
+            data = parser.parse_bc_metrics(fp)
+            fp.close()
+            for key in data.keys():
+                s = "%s_%s" % (l, key)
+                self.sample[s]["bc_count"] = data[key]
 
     def read_fastqc_metrics(self):
         for s in self.sample:
+            if s.endswith("unmatched"):
+                continue
             d = glob.glob(os.path.join(self.flowcell_dir, "fastqc", "%s_%s_*_%s*" % (self.sample[s]["lane"], self.get_run_id(), self.sample[s]["barcode_id"])))
             fastqc_dir=d[0]
             fqparser = ExtendedFastQCParser(fastqc_dir)
             stats = fqparser.get_fastqc_summary()
             self.sample[s]["metrics"]["fastqc"] = {'stats':stats}
+
+    def parse_illumina_metrics(self):
+        fn = []
+        for root, dirs, files in os.walk(self.archive_dir):
+            for file in files:
+                if file.endswith(".xml"):
+                    fn.append(os.path.join(root, file))
+        parser = IlluminaXMLParser()
+        metrics = parser.parse(fn)
+        self["metrics"]["illumina"] = metrics
 
     def save_data_by_flowcell(self):
         pass
@@ -407,8 +593,13 @@ def run_main(fc_dir, qcdb_store_dir):
     qc_obj.read_picard_metrics()
     qc_obj.read_fastqc_metrics()
     qc_obj.parse_filter_metrics()
+    qc_obj.parse_fastq_screen()
+    qc_obj.parse_bc_metrics()
+    qc_obj.parse_illumina_metrics()
     if options.dry_run:
         print "DRY_RUN: saving qc data for %s" % qc_obj.get_id()
+        for info in qc_obj.keys():
+            print qc_obj[info]
     else:
         qc_obj.save_data_by_sample()
     # else:
@@ -422,7 +613,7 @@ def run_main(fc_dir, qcdb_store_dir):
     
 if __name__ == "__main__":
     usage = """
-    bcbb_QC_to_json.py config flowcellid
+    bcbb_QC_to_json.py post_process_config flowcellid
     """
     parser = OptionParser(usage=usage)
     parser.add_option("-v", "--verbose", dest="verbose", action="store_true",
